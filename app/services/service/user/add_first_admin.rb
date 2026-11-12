@@ -1,0 +1,53 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+class Service::User::AddFirstAdmin < Service::Base
+
+  attr_reader :user_data, :request
+
+  def initialize(user_data:, request:)
+    @user_data = user_data
+    @request = request
+  end
+
+  def execute
+    setup_pending!
+
+    if user_data[:email].blank?
+      raise Exceptions::MissingAttribute.new('email', __("The required attribute 'email' is missing."))
+    end
+
+    PasswordPolicy.new(user_data[:password]).valid!
+
+    User.new(user_data).tap do |user|
+      user.role_ids  = Role.where(name: %w[Admin Agent]).pluck(:id)
+      user.group_ids = Group.pluck(:id)
+      UserInfo.ensure_current_user_id { user.save! }
+      configure_system(user:, request: request)
+    end
+  end
+
+  private
+
+  # CheckSetup reports an import before it checks for a completed setup, so the
+  # import has to be refused on its own.
+  def setup_pending!
+    if Service::System::CheckSetup.done?
+      raise Service::System::CheckSetup::SystemSetupError, __('This system has already been configured and an administrator account exists.')
+    end
+
+    return if !Service::System::CheckSetup.importing?
+
+    raise Service::System::CheckSetup::SystemSetupError, __('The system setup cannot be started, because there is another one running or it was completed before.')
+  end
+
+  def configure_system(user:, request:)
+    Setting.set('system_init_done', true)
+    Service::Image.organization_suggest(user.email) if user.email.present?
+    Calendar.init_setup(request.remote_ip)
+    begin
+      TextModule.load(request.env['HTTP_ACCEPT_LANGUAGE'] || 'en-us')
+    rescue => e
+      logger.error "Unable to load text modules #{request.env['HTTP_ACCEPT_LANGUAGE'] || 'en-us'}: #{e.message}"
+    end
+  end
+end

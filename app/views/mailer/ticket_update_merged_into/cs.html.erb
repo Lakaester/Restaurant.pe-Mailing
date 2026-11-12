@@ -1,0 +1,11 @@
+Tiket (#{ticket.title}) byl sloučen do jiného tiketu
+
+<div>Dobrý den, #{recipient.firstname},</div>
+<br>
+<div>
+uživatel "<b>#{current_user.longname}</b>" sloučil tiket (#{ticket.title}) do jiného tiketu.
+</div>
+<br>
+<div>
+  <a href="#{config.http_type}://#{config.fqdn}/#ticket/zoom/#{ticket.id}" target="zammad_app">Zobrazit v #{config.product_name}</a>
+</div>

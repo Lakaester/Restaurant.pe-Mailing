@@ -1,0 +1,79 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+
+RSpec.describe UserContext do
+  subject(:user_context) { described_class.new(user, token) }
+
+  describe '#is_a?' do
+    let(:user)  { create(:user) }
+    let(:token) { nil }
+
+    it 'returns true for User' do
+      expect(user_context.is_a?(User)).to be true
+    end
+
+    it 'returns false for unrelated class' do
+      expect(user_context.is_a?(String)).to be false
+    end
+  end
+
+  describe '#instance_of?' do
+    let(:user)  { create(:user) }
+    let(:token) { nil }
+
+    it 'returns true for User' do
+      expect(user_context.instance_of?(User)).to be true
+    end
+
+    it 'returns false for unrelated class' do
+      expect(user_context.instance_of?(String)).to be false
+    end
+  end
+
+  describe 'ActiveRecord equality' do
+    let(:user)  { create(:user) }
+    let(:token) { nil }
+
+    it 'is equal to the wrapped user in both directions', :aggregate_failures do
+      expect(user == user_context).to be true
+      expect(user_context == user).to be true
+      expect([user]).to include(user_context)
+    end
+
+    it 'is not equal to another user' do
+      expect(create(:user) == user_context).to be false
+    end
+  end
+
+  describe 'ActiveJob serialization' do
+    let(:user)  { create(:user) }
+    let(:token) { nil }
+
+    it 'serializes via the underlying user GlobalID and resolves back to the User', :aggregate_failures do
+      serialized = ActiveJob::Arguments.serialize([user_context])
+      expect(serialized).to eq([{ '_aj_globalid' => user.to_global_id.to_s }])
+      expect(ActiveJob::Arguments.deserialize(serialized).first).to eq(user)
+    end
+  end
+
+  describe '#permissions?' do
+    context 'when user with ticket.agent permission' do
+      let(:user)  { create(:user, roles: create_list(:role, 1, :agent)) }
+      let(:token) { nil }
+
+      it { is_expected.to be_permissions('ticket.agent') }
+      it { is_expected.not_to be_permissions('admin') }
+    end
+
+    # https://github.com/zammad/zammad/issues/3186
+    context 'when user with ticket.agent permission and token created by user who doesn\'t' do
+      let(:user)        { create(:user, roles: create_list(:role, 1, :agent)) }
+      let(:token_owner) { create(:user, roles: create_list(:role, 1, :admin)) }
+      let(:token)       { create(:token, user: token_owner, preferences: { permission: %w[ticket.agent] }) }
+
+      it { is_expected.to be_permissions('ticket.agent') }
+      it { is_expected.not_to be_permissions('admin') }
+    end
+  end
+end

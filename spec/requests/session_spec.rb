@@ -1,0 +1,733 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+
+RSpec.describe 'Sessions endpoints', type: :request do
+
+  describe 'GET /api/v1/sessions/switch/:id' do
+    let(:admin) { create(:admin) }
+    let(:agent) { create(:agent) }
+
+    before do
+      authenticated_as(admin)
+      get "/api/v1/sessions/switch/#{agent.id}", as: :json
+    end
+
+    it 'creates an audit log entry with both user names' do
+      audit_log = AuditLog.find_by(auditable_type: 'User', auditable_id: agent.id, action_type: 'switch_to')
+      expect(audit_log).to have_attributes(
+        user_id:        admin.id,
+        auditable_name: "#{admin.fullname} → #{agent.fullname}",
+        source_ip:      '127.0.0.1'
+      )
+    end
+  end
+
+  describe 'GET /api/v1/sessions/switch_back' do
+    let(:admin) { create(:admin) }
+    let(:agent) { create(:agent) }
+
+    before do
+      authenticated_as(admin, via: :browser)
+      get "/api/v1/sessions/switch/#{agent.id}", as: :json
+      get '/api/v1/sessions/switch_back', as: :json
+    end
+
+    it 'creates an audit log entry with both user names' do
+      audit_log = AuditLog.find_by(auditable_type: 'User', auditable_id: agent.id, action_type: 'switch_back_to')
+      expect(audit_log).to have_attributes(
+        user_id:        admin.id,
+        auditable_name: "#{agent.fullname} → #{admin.fullname}",
+        source_ip:      '127.0.0.1'
+      )
+    end
+  end
+
+  describe 'multiple consecutive switches' do
+    let(:admin)       { create(:admin) }
+    let(:other_admin) { create(:admin) }
+    let(:third_admin) { create(:admin) }
+    let(:agent)       { create(:agent) }
+
+    before do
+      authenticated_as(admin, via: :browser)
+      get "/api/v1/sessions/switch/#{other_admin.id}", as: :json
+      get "/api/v1/sessions/switch/#{third_admin.id}", as: :json
+      put "/api/v1/users/#{agent.id}", params: { active: false }, as: :json
+    end
+
+    it 'keeps the original user in the audit log entry' do
+      audit_log = AuditLog.find_by(auditable_type: 'User', auditable_id: agent.id, action_type: 'update')
+      expect(audit_log).to have_attributes(
+        user_id:       third_admin.id,
+        user_fullname: "#{admin.fullname} → #{third_admin.fullname}",
+        preferences:   include('switched_from_user_id' => admin.id, 'switched_from_user_fullname' => admin.fullname)
+      )
+    end
+  end
+
+  describe 'audit logging of actions performed while switched' do
+    let(:admin)       { create(:admin) }
+    let(:other_admin) { create(:admin) }
+    let(:agent)       { create(:agent) }
+
+    before do
+      authenticated_as(admin, via: :browser)
+      get "/api/v1/sessions/switch/#{other_admin.id}", as: :json
+      put "/api/v1/users/#{agent.id}", params: { active: false }, as: :json
+    end
+
+    it 'includes the original user in the audit log entry' do
+      audit_log = AuditLog.find_by(auditable_type: 'User', auditable_id: agent.id, action_type: 'update')
+      expect(audit_log).to have_attributes(
+        user_id:       other_admin.id,
+        user_fullname: "#{admin.fullname} → #{other_admin.fullname}",
+        preferences:   include('switched_from_user_id' => admin.id, 'switched_from_user_fullname' => admin.fullname)
+      )
+    end
+  end
+
+  describe 'GET /' do
+
+    let(:headers)     { {} }
+    let(:session_key) { Zammad::Application::Initializer::SessionStore::SESSION_KEY }
+
+    before do
+      Setting.set('http_type', http_type)
+
+      get '/', headers: headers
+    end
+
+    context "when Setting 'http_type' is set to 'https'" do
+
+      let(:http_type) { 'https' }
+
+      context "when it's not an HTTPS request" do
+
+        it 'sets no Cookie' do
+          expect(response.header['Set-Cookie']).to be_nil
+        end
+      end
+
+      context "when it's an HTTPS request" do
+
+        let(:headers) do
+          {
+            'X-Forwarded-Proto' => 'https'
+          }
+        end
+
+        it "sets Cookie with 'secure' flag" do
+          expect(response.header['Set-Cookie']).to include(session_key).and include('; secure;')
+        end
+      end
+
+      # Rack decides which forwarded header wins; these examples pin that order down, because
+      #   our proxy configuration relies on it (see https://github.com/zammad/zammad/issues/6305).
+      context "when a proxy sends contradicting 'X-Forwarded-Proto' and 'X-Forwarded-Scheme' headers" do
+
+        let(:headers) do
+          {
+            'X-Forwarded-Proto'  => 'http',
+            'X-Forwarded-Scheme' => 'https'
+          }
+        end
+
+        it "sets no Cookie, because 'X-Forwarded-Proto' takes precedence" do
+          expect(response.header['Set-Cookie']).to be_nil
+        end
+      end
+
+      context "when a proxy sends an 'X-Forwarded-Ssl' header" do
+
+        let(:headers) do
+          {
+            'X-Forwarded-Proto' => 'http',
+            'X-Forwarded-Ssl'   => 'on'
+          }
+        end
+
+        it "sets Cookie with 'secure' flag, because 'X-Forwarded-Ssl' takes precedence" do
+          expect(response.header['Set-Cookie']).to include(session_key).and include('; secure;')
+        end
+      end
+
+      context "when a proxy sends a 'Forwarded' header" do
+
+        let(:headers) do
+          {
+            'X-Forwarded-Proto' => 'http',
+            'Forwarded'         => 'proto=https'
+          }
+        end
+
+        it "sets Cookie with 'secure' flag, because 'Forwarded' takes precedence" do
+          expect(response.header['Set-Cookie']).to include(session_key).and include('; secure;')
+        end
+      end
+    end
+
+    context "when Setting 'http_type' is set to 'http'" do
+
+      let(:http_type) { 'http' }
+
+      context "when it's not an HTTPS request" do
+
+        it 'sets Cookie' do
+          expect(response.header['Set-Cookie']).to include(session_key).and not_include('; secure;')
+        end
+      end
+
+      context "when it's an HTTPS request" do
+
+        let(:headers) do
+          {
+            'X-Forwarded-Proto' => 'https'
+          }
+        end
+
+        it "sets Cookie without 'secure' flag" do
+          expect(response.header['Set-Cookie']).to include(session_key).and not_include('; secure;')
+        end
+      end
+    end
+  end
+
+  describe 'GET /signshow' do
+
+    context 'user logged in' do
+
+      subject(:user) { create(:agent, password: password) }
+
+      let(:password) { SecureRandom.urlsafe_base64(20) }
+      let(:fingerprint) { SecureRandom.urlsafe_base64(40) }
+
+      before do
+        setting if defined?(setting)
+
+        params = {
+          fingerprint: fingerprint,
+          username:    user.login,
+          password:    password
+        }
+        post '/api/v1/signin', params: params, as: :json
+      end
+
+      it 'leaks no sensitive data' do
+        params = { fingerprint: fingerprint }
+        get '/api/v1/signshow', params: params, as: :json
+
+        expect(json_response['session']).not_to include('password')
+      end
+
+      it 'does not expose the session id' do
+        get '/api/v1/signshow', params: { fingerprint: fingerprint }, as: :json
+
+        expect(json_response['config']).not_to include('session_id')
+      end
+
+      context 'when after auth modules are triggered' do
+        subject(:user) { create(:customer, roles: [role], password: password) }
+
+        let(:role)     { create(:role, name: '2FA') }
+
+        context 'with no enforcing roles' do
+          it 'returns nil' do
+            expect(json_response['after_auth']).to be_nil
+          end
+        end
+
+        context 'with enforcing roles' do
+          let(:setting) do
+            Setting.set('two_factor_authentication_enforce_role_ids', [role.id])
+            Setting.set('two_factor_authentication_method_authenticator_app', true)
+          end
+
+          it 'returns the after auth information' do
+            expect(json_response['after_auth']).to include({ 'data' => { 'token' => be_a(String) }, 'type' => 'TwoFactorConfiguration' })
+          end
+        end
+      end
+    end
+
+    context 'user not logged in' do
+      subject(:user) { nil }
+
+      it 'contains only user related object manager attributes' do
+        get '/api/v1/signshow', params: {}, as: :json
+
+        expect(json_response['models'].keys).to match_array(%w[User])
+      end
+
+      it 'does not contain fields with permission admin.*' do
+        get '/api/v1/signshow', params: {}, as: :json
+
+        expect(json_response['models']['User']).not_to include(hash_including('name' => 'role_ids'))
+      end
+    end
+  end
+
+  describe 'GET /auth/sso (single sign-on)' do
+
+    before do
+      Setting.set('auth_sso', true)
+    end
+
+    context 'when SSO is disabled' do
+
+      before do
+        Setting.set('auth_sso', false)
+      end
+
+      let(:headers) { { 'X-Forwarded-User' => login } }
+      let(:login)   { User.last.login }
+
+      it 'returns a new user-session response' do
+        get '/auth/sso', as: :json, headers: headers
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'with invalid user login' do
+      let(:login) { User.pluck(:login).max.next }
+
+      context 'in "REMOTE_USER" request env var' do
+        let(:env) { { 'REMOTE_USER' => login } }
+
+        it 'returns unauthorized response' do
+          get '/auth/sso', as: :json, env: env
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
+
+      context 'in "HTTP_REMOTE_USER" request env var' do
+        let(:env) { { 'HTTP_REMOTE_USER' => login } }
+
+        it 'returns unauthorized response' do
+          get '/auth/sso', as: :json, env: env
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
+
+      context 'in "X-Forwarded-User" request header' do
+        let(:headers) { { 'X-Forwarded-User' => login } }
+
+        it 'returns unauthorized response' do
+          get '/auth/sso', as: :json, headers: headers
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
+    end
+
+    context 'with valid user login' do
+      let(:user) { create(:agent) }
+      let(:login) { user.login }
+
+      context 'in Maintenance Mode' do
+        before { Setting.set('maintenance_mode', true) }
+
+        context 'in "REMOTE_USER" request env var' do
+          let(:env) { { 'REMOTE_USER' => login } }
+
+          it 'returns 403 Forbidden' do
+            get '/auth/sso', as: :json, env: env
+
+            expect(response).to have_http_status(:forbidden)
+            expect(json_response).to include('error' => 'Maintenance mode enabled!')
+          end
+        end
+
+        context 'in "HTTP_REMOTE_USER" request env var' do
+          let(:env) { { 'HTTP_REMOTE_USER' => login } }
+
+          it 'returns 403 Forbidden' do
+            get '/auth/sso', as: :json, env: env
+
+            expect(response).to have_http_status(:forbidden)
+            expect(json_response).to include('error' => 'Maintenance mode enabled!')
+          end
+        end
+
+        context 'in "X-Forwarded-User" request header' do
+          let(:headers) { { 'X-Forwarded-User' => login } }
+
+          it 'returns 403 Forbidden' do
+            get '/auth/sso', as: :json, headers: headers
+
+            expect(response).to have_http_status(:forbidden)
+            expect(json_response).to include('error' => 'Maintenance mode enabled!')
+          end
+        end
+
+        it 'does not update the last login' do
+          expect { get '/auth/sso', as: :json, headers: { 'X-Forwarded-User' => login } }
+            .not_to change { user.reload.last_login }
+        end
+      end
+
+      context 'in "REMOTE_USER" request env var' do
+        let(:env) { { 'REMOTE_USER' => login } }
+
+        it 'returns a new user-session response' do
+          get '/auth/sso', as: :json, env: env
+
+          expect(response).to redirect_to('/#')
+        end
+
+        it 'sets the :user_id session parameter' do
+          expect { get '/auth/sso', as: :json, env: env }
+            .to change { request&.session&.fetch(:user_id) }.to(user.id)
+        end
+      end
+
+      context 'in "HTTP_REMOTE_USER" request env var' do
+        let(:env) { { 'HTTP_REMOTE_USER' => login } }
+
+        it 'returns a new user-session response' do
+          get '/auth/sso', as: :json, env: env
+
+          expect(response).to redirect_to('/#')
+        end
+
+        it 'sets the :user_id session parameter' do
+          expect { get '/auth/sso', as: :json, env: env }
+            .to change { request&.session&.fetch(:user_id) }.to(user.id)
+        end
+      end
+
+      context 'in "X-Forwarded-User" request header' do
+        let(:headers) { { 'X-Forwarded-User' => login } }
+
+        it 'returns a new user-session response' do
+          get '/auth/sso', as: :json, headers: headers
+
+          expect(response).to redirect_to('/#')
+        end
+
+        it 'sets the :user_id session parameter on the client' do
+          expect { get '/auth/sso', as: :json, headers: headers }
+            .to change { request&.session&.fetch(:user_id) }.to(user.id)
+        end
+
+        it 'updates the last login' do
+          freeze_time
+
+          expect { get '/auth/sso', as: :json, headers: headers }
+            .to change { user.reload.last_login }.from(nil).to(Time.zone.now)
+        end
+
+        context 'with failed logins before' do
+          let(:user) { create(:agent, login_failed: 2) }
+
+          it 'resets the failed logins' do
+            expect { get '/auth/sso', as: :json, headers: headers }
+              .to change { user.reload.login_failed }.from(2).to(0)
+          end
+        end
+      end
+    end
+
+    context 'with multiple user logins' do
+      let(:user)       { create(:agent) }
+      let(:other_user) { create(:agent) }
+
+      shared_examples 'refusing the login with 401 Unauthorized' do
+        it 'returns 401 Unauthorized' do
+          get '/auth/sso', as: :json, headers: headers, env: env
+
+          expect(response).to have_http_status(:unauthorized)
+          expect(json_response).to include('error' => 'The SSO environment variables and headers contain different user logins.')
+        end
+
+        it 'does not set the :user_id session parameter' do
+          expect { get '/auth/sso', as: :json, headers: headers, env: env }
+            .not_to change { request&.session&.fetch(:user_id, nil) }
+        end
+      end
+
+      context 'when "X-Forwarded-User" header and "HTTP_REMOTE_USER" request env var differ' do
+        let(:headers) { { 'X-Forwarded-User' => user.login } }
+        let(:env)     { { 'HTTP_REMOTE_USER' => other_user.login } }
+
+        include_examples 'refusing the login with 401 Unauthorized'
+      end
+
+      context 'when "X-Forwarded-User" header and "REMOTE_USER" request env var differ' do
+        let(:headers) { { 'X-Forwarded-User' => user.login } }
+        let(:env)     { { 'REMOTE_USER' => other_user.login } }
+
+        include_examples 'refusing the login with 401 Unauthorized'
+      end
+
+      context 'when "REMOTE_USER" and "HTTP_REMOTE_USER" request env vars differ' do
+        let(:headers) { {} }
+        let(:env)     { { 'REMOTE_USER' => user.login, 'HTTP_REMOTE_USER' => other_user.login } }
+
+        include_examples 'refusing the login with 401 Unauthorized'
+      end
+
+      context 'when all sources contain the same login' do
+        let(:headers) { { 'X-Forwarded-User' => user.login } }
+        let(:env)     { { 'REMOTE_USER' => user.login, 'HTTP_REMOTE_USER' => user.login.upcase } }
+
+        it 'returns a new user-session response' do
+          get '/auth/sso', as: :json, headers: headers, env: env
+
+          expect(response).to redirect_to('/#')
+        end
+
+        it 'sets the :user_id session parameter' do
+          expect { get '/auth/sso', as: :json, headers: headers, env: env }
+            .to change { request&.session&.fetch(:user_id) }.to(user.id)
+        end
+      end
+    end
+
+    context 'with trusted proxy IPs configured' do
+      before do
+        Setting.set('auth_sso_trusted_ips', '192.168.1.1, 10.0.0.0/8')
+      end
+
+      let(:user)    { create(:agent) }
+      let(:headers) { { 'X-Forwarded-User' => user.login } }
+
+      context 'when request comes from a trusted IP address' do
+        it 'allows the SSO login' do
+          get '/auth/sso', as: :json, headers: headers, env: { 'REMOTE_ADDR' => '192.168.1.1' }
+
+          expect(response).to redirect_to('/#')
+        end
+      end
+
+      context 'when request comes from an IP within a trusted CIDR range' do
+        it 'allows the SSO login' do
+          get '/auth/sso', as: :json, headers: headers, env: { 'REMOTE_ADDR' => '10.1.2.3' }
+
+          expect(response).to redirect_to('/#')
+        end
+      end
+
+      context 'when request comes from an untrusted IP address' do
+        it 'returns 403 Forbidden' do
+          get '/auth/sso', as: :json, headers: headers, env: { 'REMOTE_ADDR' => '1.2.3.4' }
+
+          expect(response).to have_http_status(:forbidden)
+          expect(json_response).to include('error' => 'SSO request from untrusted IP address.')
+        end
+      end
+    end
+  end
+
+  describe 'POST /api/v1/signin - Doorkeeper OAuth resume via AfterAuth' do
+    let(:user)        { create(:agent, password: password) }
+    let(:password)    { SecureRandom.urlsafe_base64(20) }
+    let(:fingerprint) { SecureRandom.urlsafe_base64(40) }
+    let!(:oauth_app)  { Doorkeeper::Application.create!(name: 'Test', redirect_uri: 'https://localhost', scopes: '') }
+    let(:oauth_path)  { "/oauth/authorize?client_id=#{oauth_app.uid}&redirect_uri=https%3A%2F%2Flocalhost&response_type=code" }
+
+    context 'when session has a pending doorkeeper OAuth URL' do
+      before do
+        # Hit OAuth authorize endpoint to set doorkeeper_return_to in the session.
+        get oauth_path
+        # Now sign in - the session still has doorkeeper_return_to set.
+        post '/api/v1/signin', params: { fingerprint: fingerprint, username: user.login, password: password }, as: :json
+      end
+
+      it 'returns DoorkeeperReturnTo after_auth with the OAuth URL' do
+        expect(json_response['after_auth']).to eq({
+                                                    'type' => 'DoorkeeperReturnTo',
+                                                    'data' => { 'url' => oauth_path },
+                                                  })
+      end
+    end
+
+    context 'when session has a pending doorkeeper OAuth URL and 2FA setup is required' do
+      before do
+        Setting.set('two_factor_authentication_enforce_role_ids', [Role.find_by(name: 'Agent').id])
+        Setting.set('two_factor_authentication_method_authenticator_app', true)
+
+        # Hit OAuth authorize endpoint to set doorkeeper_return_to in the session.
+        get oauth_path
+        # Now sign in - the session still has doorkeeper_return_to set.
+        post '/api/v1/signin', params: { fingerprint: fingerprint, username: user.login, password: password }, as: :json
+      end
+
+      it 'returns TwoFactorConfiguration after_auth instead of DoorkeeperReturnTo' do
+        expect(json_response['after_auth']).to include('type' => 'TwoFactorConfiguration')
+      end
+
+      it 'preserves doorkeeper_return_to in the session for later' do
+        # Simulate completing 2FA setup: disabling enforcement makes two_factor_setup_required? false.
+        Setting.set('two_factor_authentication_enforce_role_ids', [])
+
+        # After 2FA setup, the next session show should trigger DoorkeeperReturnTo
+        get '/api/v1/signshow', as: :json
+        expect(json_response['after_auth']).to eq({
+                                                    'type' => 'DoorkeeperReturnTo',
+                                                    'data' => { 'url' => oauth_path },
+                                                  })
+      end
+    end
+
+    context 'when session has no pending doorkeeper OAuth URL' do
+      before do
+        post '/api/v1/signin', params: { fingerprint: fingerprint, username: user.login, password: password }, as: :json
+      end
+
+      it 'does not return DoorkeeperReturnTo after_auth' do
+        expect(json_response['after_auth']).to be_nil
+      end
+    end
+  end
+
+  describe 'GET /auth/sso - Doorkeeper OAuth resume' do
+    let(:user)       { create(:agent) }
+    let(:login)      { user.login }
+    let(:env)        { { 'REMOTE_USER' => login } }
+    let!(:oauth_app) { Doorkeeper::Application.create!(name: 'Test', redirect_uri: 'https://localhost', scopes: '') }
+    let(:oauth_path) { "/oauth/authorize?client_id=#{oauth_app.uid}&redirect_uri=https%3A%2F%2Flocalhost&response_type=code" }
+
+    before do
+      Setting.set('auth_sso', true)
+    end
+
+    context 'when session has a pending doorkeeper OAuth URL' do
+      it 'redirects to the OAuth authorize URL' do
+        # Hit OAuth authorize endpoint to set doorkeeper_return_to in the session.
+        get oauth_path
+        # Now SSO login - the session still has doorkeeper_return_to set.
+        get '/auth/sso', as: :json, env: env
+        expect(response).to redirect_to(oauth_path)
+      end
+    end
+
+    context 'when session has no pending doorkeeper OAuth URL' do
+      it 'redirects to the default app route' do
+        get '/auth/sso', as: :json, env: env
+        expect(response).to redirect_to('/#')
+      end
+    end
+  end
+
+  describe 'GET /auth/:provider/callback (omniauth)' do
+    let(:user)           { create(:agent) }
+    let!(:authorization) { create(:authorization, user: user, provider: 'github', uid: '123456') }
+
+    # The provider name is arbitrary here: OmniAuth test mode injects the mock
+    # for the requested path and bypasses the registered strategy entirely, so
+    # this exercises the controller's session handling regardless of provider.
+    around do |example|
+      OmniAuth.config.test_mode = true
+      OmniAuth.config.mock_auth[:github] = OmniAuth::AuthHash.new(
+        provider:    authorization.provider,
+        uid:         authorization.uid,
+        info:        {},
+        credentials: {},
+      )
+
+      example.run
+    ensure
+      OmniAuth.config.mock_auth.delete(:github)
+      OmniAuth.config.test_mode = false
+    end
+
+    it 'redirects to the app' do
+      get '/auth/github/callback'
+
+      expect(response).to redirect_to('/#')
+    end
+
+    it 'sets the :user_id session parameter' do
+      expect { get '/auth/github/callback' }
+        .to change { request&.session&.fetch(:user_id) }.to(user.id)
+    end
+
+    # Ensures the session survives SessionHelper.cleanup_expired (2h temp-session purge)
+    # and is instead governed by the configured Session Timeout, like password/SSO logins.
+    # See https://github.com/zammad/zammad/issues/6244
+    it 'marks the session as persistent' do
+      expect { get '/auth/github/callback' }
+        .to change { request&.session&.fetch(:persistent) }.to(true)
+    end
+
+    # Without this the browser cookie is session-only, so the persistent server-side session
+    # becomes unreachable on browser restart. The cookie lifetime tracks the configured Session
+    # Timeout. See https://github.com/zammad/zammad/issues/6260
+    context 'with a configured session timeout' do
+      before { Setting.set('session_timeout', { 'default' => '0', 'ticket.agent' => 1.week.seconds.to_s }) }
+
+      it 'gives the browser cookie a lifetime matching the session timeout' do
+        expect { get '/auth/github/callback' }
+          .to change { request && request.env['rack.session.options'][:expire_after] }.to(1.week)
+      end
+    end
+
+    context 'when the session timeout is disabled' do
+      before { Setting.set('session_timeout', { 'default' => '0' }) }
+
+      it 'falls back to the SessionHelper.cleanup_expired cap' do
+        expect { get '/auth/github/callback' }
+          .to change { request && request.env['rack.session.options'][:expire_after] }.to(SessionHelper::MAX_SESSION_LIFETIME)
+      end
+    end
+  end
+
+  describe 'POST /auth/two_factor_itwo_factor_method_enablednitiate_authentication/:method' do
+    let(:user)                       { create(:user, password: 'dummy') }
+    let(:params)                     { {} }
+    let(:method)                     { 'security_keys' }
+    let(:user_two_factor_preference) { nil }
+    let(:two_factor_method_enabled)  { true }
+
+    before do
+      Setting.set('two_factor_authentication_method_security_keys', two_factor_method_enabled)
+
+      if defined?(user_two_factor_preference)
+        user_two_factor_preference
+        user.reload
+      end
+
+      post "/api/v1/auth/two_factor_initiate_authentication/#{method}", params: params, as: :json
+    end
+
+    context 'with missing params' do
+      it 'returns an error' do
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'with valid params' do
+      let(:user_two_factor_preference) { create(:user_two_factor_preference, :security_keys, user: user) }
+      let(:params)                     { { username: user.login, password: password, method: method } }
+
+      context 'with invalid user/password' do
+        let(:password) { 'invalid' }
+
+        it 'returns an error' do
+          expect(response).to have_http_status(:unprocessable_content)
+        end
+      end
+
+      context 'with valid user/password' do
+        let(:password) { 'dummy' }
+
+        it 'returns options for initiation phase', :aggregate_failures do
+          expect(response).to have_http_status(:ok)
+          expect(json_response).to include('challenge')
+        end
+
+        context 'with disabled authenticator method' do
+          let(:two_factor_method_enabled) { false }
+
+          it 'returns an error' do
+            expect(response).to have_http_status(:unprocessable_content)
+          end
+        end
+      end
+    end
+  end
+end

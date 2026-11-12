@@ -1,0 +1,46 @@
+.template_browser-core_capybara:
+  stage: browser
+  extends:
+    - .job_rules_default
+    - .tags_docker_low_concurrency
+  script:
+    - !reference [.scripts, zammad_ci_test_prepare]
+    - bundle exec rspec --require ./spec/rspec_extensions.rb --fail-fast -t ~integration -t ~searchindex spec/system
+
+.template_browser-core_capybara_chrome:
+  extends:
+    - .template_browser-core_capybara
+    - .variables_selenium_chrome
+  services:
+    - !reference [.services, postgresql]
+    - !reference [.services, selenium-chrome]
+    - !reference [.services, redis]
+
+.template_browser-core_capybara_firefox:
+  extends:
+    - .template_browser-core_capybara
+    - .job_rules_manual_in_mr
+    - .variables_selenium_firefox
+  services:
+    - !reference [.services, postgresql]
+    - !reference [.services, selenium-firefox]
+    - !reference [.services, redis]
+
+.template_browser-core_capybara_playwright:
+  extends:
+    - .template_browser-core_capybara
+    - .variables_playwright
+  services:
+    - !reference [.services, postgresql]
+    - !reference [.services, playwright]
+    - !reference [.services, redis]
+  # A job-level artifacts block replaces the global default one entirely -
+  #   repeat its paths and add the traces recorded by playwright_traces.rb.
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - tmp/screenshot*
+      - tmp/screenshots/*
+      - tmp/playwright-traces/*
+      - log/*.log

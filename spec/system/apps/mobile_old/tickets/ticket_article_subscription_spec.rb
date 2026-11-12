@@ -1,0 +1,60 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+
+RSpec.describe 'Mobile > Ticket > Articles > Update', app: :mobile, authenticated_as: :agent, type: :system do
+  let(:group)    { Group.find_by(name: 'Users') }
+  let(:agent)    { create(:agent, groups: [group]) }
+  let(:ticket)   { create(:ticket, title: 'Ticket Title', group: group) }
+
+  context 'when subscription is triggered' do
+    let!(:article) { create(:ticket_article, body: 'Hello, World!', ticket: ticket, internal: false) }
+
+    before do
+      visit "/tickets/#{ticket.id}"
+
+      # Wait until the initial mutations of the ticket page have completed. The article changes
+      #  of the examples must not run while the app still has an open transaction on the shared
+      #  database connection - the article change would join that foreign transaction and its
+      #  after_commit callback, which triggers the subscription event, can get lost.
+      wait_for_mutation('ticketLiveUserUpsert')
+      wait_for_mutation('onlineNotificationSeen')
+
+      wait_for_subscription_start('ticketArticleUpdates', entity: ticket)
+    end
+
+    it 'updates article on the frontend' do
+      expect(page).to have_text(article.body)
+      expect(page).to have_no_css("#article-#{article.id}.Internal")
+
+      article.update!(internal: true)
+
+      wait_for_subscription_update('ticketArticleUpdates')
+
+      expect(page).to have_css("#article-#{article.id}.Internal")
+    end
+
+    it 'removes article on the frontend' do
+      expect(page).to have_css("#article-#{article.id}")
+
+      article.destroy!
+
+      wait_for_subscription_update('ticketArticleUpdates')
+
+      expect(page).to have_no_css("#article-#{article.id}")
+    end
+
+    it 'adds new article on the frontend' do
+      expect(page).to have_css("#article-#{article.id}")
+
+      new_article = create(:ticket_article, ticket: ticket, internal: false)
+
+      wait_for_subscription_update('ticketArticleUpdates')
+
+      expect(page).to have_css("#article-#{article.id}")
+      expect(page).to have_css("#article-#{new_article.id}")
+    end
+
+  end
+
+end

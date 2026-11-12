@@ -1,0 +1,19 @@
+#{config.product_name}: přihlášení z nové země
+
+<div>Dobrý den, #{user.firstname},</div>
+<br>
+<div>zdá se, že jste svůj účet použili <b>ze známého zařízení, ale z nové země</b>, a to dne "#{user_device.created_at}":</div>
+<br>
+<div>
+Vaše zařízení: #{user_device.name}<br>
+Vaše poloha (přibližná): #{user_device.location}<br>
+Vaše IP adresa: #{user_device.ip}<br>
+</div>
+<br>
+<div>Země byla přidána do vašeho seznamu známých zařízení, který si můžete prohlédnout zde:</div>
+<br>
+<div><a href="#{config.http_type}://#{config.fqdn}/#profile/devices">#{config.http_type}://#{config.fqdn}/#profile/devices</a></div>
+<br>
+<div>Pokud jste to nebyli vy, odeberte prosím toto zařízení, změňte si heslo k účtu a kontaktujte svého administrátora. Někdo mohl získat neoprávněný přístup k vašemu účtu.</div>
+<br>
+<div>Váš tým #{config.product_name}</div>

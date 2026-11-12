@@ -1,0 +1,31 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+
+RSpec.describe 'Mobile > Ticket', app: :mobile, authenticated_as: :agent, type: :system do
+  let(:group)  { create(:group) }
+  let(:agent)  { create(:agent, groups: [group]) }
+  let(:ticket) { create(:ticket, title: 'Ticket Title', group: group) }
+
+  # TODO: we should add a test which checks also the handling for multiple tabs
+  context 'when subscribing to a ticket' do
+    it 'updates the content on the page' do
+      visit "/tickets/#{ticket.id}"
+
+      wait_for_gql 'apps/mobile/entities/ticket/graphql/queries/ticketWithMentionLimit.graphql'
+      expect(page).to have_text('Ticket Title')
+
+      # Scope the readiness check to this ticket's event stream - without the
+      #   entity, any ticketUpdates stream satisfies it and the push can race
+      #   the actual subscription (seen in CI as 'ticketUpdates 1 not set').
+      wait_for_subscription_start 'ticketUpdates', entity: ticket
+
+      # The connection is shared with the server threads: joining one of their open
+      #   transactions would swallow the after_commit that triggers the subscription.
+      Ticket.transaction(requires_new: true) { ticket.update!(title: 'New Title') }
+      wait_for_subscription_update 'ticketUpdates'
+
+      expect(page).to have_text('New Title')
+    end
+  end
+end

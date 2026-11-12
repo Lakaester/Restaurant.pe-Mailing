@@ -1,0 +1,110 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+
+RSpec.describe 'Manage > Sla', type: :system do
+  before do
+    ensure_websocket do
+      visit 'manage/slas'
+    end
+  end
+
+  it 'shows correct required behaviour for checkboxes' do
+    page.find('.js-new').click
+
+    # enable all checkboxes
+    page.find('input#update_time', visible: false).find(:xpath, './/..').click
+    page.first('.js-updateTypeSelector', visible: false).click
+    page.find('input#solution_time', visible: false).find(:xpath, './/..').click
+
+    # check if required
+    expect(page).to have_css('input[name=first_response_time_in_text][required]')
+    expect(page).to have_css('input[name=update_time_in_text][required]')
+    expect(page).to have_css('input[name=solution_time_in_text][required]')
+
+    # drop all checkboxes
+    page.find('input#first_response_time', visible: false).find(:xpath, './/..').click
+    page.find('input#update_time', visible: false).find(:xpath, './/..').click
+    page.find('input#solution_time', visible: false).find(:xpath, './/..').click
+
+    # check if optional
+    expect(page).to have_no_css('input[name=first_response_time_in_text][required]')
+    expect(page).to have_no_css('input[name=update_time_in_text][required]')
+    expect(page).to have_no_css('input[name=solution_time_in_text][required]')
+  end
+
+  describe 'for saved entry', authenticated_as: :authenticate do
+    def authenticate
+      create(:sla, name: 'special sla', first_response_time: 3600, update_time: 3600, solution_time: 3600)
+      true
+    end
+
+    it 'shows correct required behaviour for checkboxes' do
+      page.find('.js-edit').click
+
+      # check if required
+      expect(page).to have_css('input[name=first_response_time_in_text][required]')
+      expect(page).to have_css('input[name=update_time_in_text][required]')
+      expect(page).to have_css('input[name=solution_time_in_text][required]')
+
+      # drop all checkboxes
+      page.find('input#first_response_time', visible: false).find(:xpath, './/..').click
+      page.find('input#update_time', visible: false).find(:xpath, './/..').click
+      page.find('input#solution_time', visible: false).find(:xpath, './/..').click
+
+      # check if optional
+      expect(page).to have_no_css('input[name=first_response_time_in_text][required]')
+      expect(page).to have_no_css('input[name=update_time_in_text][required]')
+      expect(page).to have_no_css('input[name=solution_time_in_text][required]')
+    end
+  end
+
+  context 'when using times longer than 999 hours', authenticated_as: :authenticate do
+    def authenticate
+      create(:sla, name: 'long sla', first_response_time: 6000, update_time: 86_400, solution_time: 5_999_940)
+      true
+    end
+
+    it 'shows and saves long times correctly (#6355)' do
+      click '.js-edit'
+
+      in_modal do
+        expect(page).to have_field('first_response_time_in_text', with: '100:00')
+        expect(page).to have_field('update_time_in_text', with: '1440:00')
+        expect(page).to have_field('solution_time_in_text', with: '99999:00')
+
+        fill_in 'solution_time_in_text', with: '2880', fill_options: { clear: :backspace }
+        find('input[name=solution_time_in_text]').send_keys(:tab)
+
+        expect(page).to have_field('solution_time_in_text', with: '2880:00')
+
+        click '.js-submit'
+      end
+
+      expect(Sla.find_by(name: 'long sla')).to have_attributes(
+        first_response_time: 6000,
+        update_time:         86_400,
+        solution_time:       172_800,
+      )
+    end
+  end
+
+  context 'when using custom calendars' do
+    let(:calendar) { create(:calendar) }
+
+    it 'allows to select custom calendars' do
+      calendar
+      page.refresh
+      click '.js-new'
+
+      in_modal do
+        fill_in :name, with: 'SLA with custom calendar'
+        select 'open', from: 'condition::ticket.state_id::value'
+        select calendar.name, from: :calendar_id
+        click '.js-submit'
+      end
+
+      expect(page).to have_text(calendar.name)
+    end
+  end
+end

@@ -1,0 +1,533 @@
+// Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+import { h, ref } from 'vue'
+
+import { renderComponent } from '#tests/support/components/index.ts'
+import type { ExtendedRenderResult } from '#tests/support/components/index.ts'
+
+import type { SelectOption } from '#shared/components/CommonSelect/types.ts'
+import { i18n } from '#shared/i18n.ts'
+
+import CommonSelect, { type Props } from '../CommonSelect.vue'
+
+import type { ConcreteComponent, Ref } from 'vue'
+
+const options = [
+  {
+    value: 0,
+    label: 'Item A',
+  },
+  {
+    value: 1,
+    label: 'Item B',
+  },
+  {
+    value: 2,
+    label: 'Item C',
+  },
+]
+
+const html = String.raw
+
+// A functional component, so that it survives the deep cloning of the render options.
+const CustomSelectItem = (
+  props: { option: SelectOption; selected?: boolean },
+  { emit }: { emit: (event: 'select', option: SelectOption) => void },
+) =>
+  h(
+    'button',
+    {
+      role: 'option',
+      tabindex: '0',
+      'aria-selected': props.selected ?? false,
+      'data-test-id': 'custom-select-item',
+      onClick: () => emit('select', props.option),
+    },
+    props.option.label,
+  )
+
+CustomSelectItem.props = {
+  option: { type: Object, required: true },
+  selected: { type: Boolean, default: false },
+}
+CustomSelectItem.emits = ['select']
+
+const optionComponent = CustomSelectItem as unknown as ConcreteComponent
+
+const renderSelect = (props: Props, modelValue?: Ref) => {
+  return renderComponent(CommonSelect, {
+    props: {
+      isTargetVisible: true,
+      ...props,
+    },
+    slots: {
+      default: html`
+        <template #default="{ open, focus }">
+          <button @click="open()">Open Select</button>
+          <button @click="focus()">Move Focus</button>
+        </template>
+      `,
+    },
+    vModel: {
+      modelValue,
+    },
+  })
+}
+
+beforeEach(() => {
+  i18n.setTranslationMap(new Map([]))
+})
+
+describe('CommonSelect.vue', () => {
+  it('can select and unselect value', async () => {
+    const modelValue = ref()
+    const view = renderSelect({ options }, modelValue)
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(view.queryByRole('menu')).toBeInTheDocument()
+
+    await view.events.click(view.getByText('Item A'))
+
+    expect(view.emitted().select).toEqual([[options[0]]])
+    expect(view.queryByRole('menu')).not.toBeInTheDocument()
+    expect(modelValue.value).toBe(0)
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(
+      view.getByIconName((name, node) => {
+        return name === '#icon-check2' && !node?.parentElement?.classList.contains('invisible')
+      }),
+    ).toBeInTheDocument()
+
+    await view.events.click(view.getByText('Item A'))
+
+    expect(view.emitted().select).toEqual([[options[0]], [options[0]]])
+    expect(modelValue.value).toBe(undefined)
+  })
+
+  it('does not close select with noClose prop', async () => {
+    const view = renderSelect({ options, noClose: true })
+
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByRole('option', { name: 'Item A' }))
+
+    expect(view.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('can select and unselect multiple values', async () => {
+    const modelValue = ref()
+    const view = renderSelect({ options, multiple: true }, modelValue)
+
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByText('Item A'))
+
+    expect(modelValue.value).toEqual([0])
+
+    expect(view.queryAllByIconName('check-square')).toHaveLength(1)
+    await view.events.click(view.getByText('Item A'))
+
+    expect(modelValue.value).toEqual([])
+
+    await view.events.click(view.getByText('Item A'))
+    await view.events.click(view.getByText('Item B'))
+
+    expect(modelValue.value).toEqual([0, 1])
+
+    expect(view.queryAllByIconName('check-square')).toHaveLength(2)
+  })
+
+  it('can use select all action with active multiple', async () => {
+    const modelValue = ref()
+    const view = renderSelect({ options, multiple: true }, modelValue)
+
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByText('select all options'))
+
+    expect(modelValue.value).toEqual([0, 1, 2])
+
+    expect(view.queryAllByIconName('check-square')).toHaveLength(3)
+  })
+
+  it('can add additional actions', async () => {
+    const modelValue = ref()
+
+    const actionCallbackSpy = vi.fn()
+    const view = renderSelect(
+      {
+        options,
+        multiple: true,
+        actions: [
+          {
+            label: 'example action',
+            key: 'example',
+            onClick: actionCallbackSpy,
+          },
+        ],
+      },
+      modelValue,
+    )
+
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByText('example action'))
+
+    expect(actionCallbackSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('passive mode does not change local value, but emits select', async () => {
+    const modelValue = ref()
+    const view = renderSelect({ options, passive: true }, modelValue)
+
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByText('Item A'))
+
+    expect(view.emitted().select).toBeDefined()
+
+    expect(modelValue.value).toBeUndefined()
+  })
+
+  it('cannot select disabled values', async () => {
+    const modelValue = ref()
+    const view = renderSelect({ options: [{ ...options[0], disabled: true }] }, modelValue)
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(view.getByTestId('select-item')).toHaveAttribute(
+      'aria-description',
+      'This item expands to show more options',
+    )
+
+    await view.events.click(view.getByText('Item A'))
+
+    expect(view.emitted().select).toBeUndefined()
+    expect(modelValue.value).toBeUndefined()
+  })
+
+  it('translates labels', async () => {
+    i18n.setTranslationMap(new Map([[options[0].label, 'Translated Item A']]))
+    const view = renderSelect({ options })
+
+    await view.events.click(view.getByText('Open Select'))
+    expect(view.getByText('Translated Item A')).toBeInTheDocument()
+  })
+
+  it('does not translate with noOptionsLabelTranslation prop', async () => {
+    i18n.setTranslationMap(new Map([[options[0].label, 'Translated Item A']]))
+    const view = renderSelect({ options, noOptionsLabelTranslation: true })
+
+    await view.events.click(view.getByText('Open Select'))
+    expect(view.getByText(/^Item A$/)).toBeInTheDocument()
+  })
+
+  it('forces translation if placeholder is provided', async () => {
+    const options = [
+      {
+        value: 0,
+        label: 'Label (%s)',
+        labelPlaceholder: ['A'],
+        heading: 'Heading (%s)',
+        headingPlaceholder: ['B'],
+      },
+    ]
+
+    const view = renderSelect({ options, noOptionsLabelTranslation: true })
+
+    await view.events.click(view.getByText('Open Select'))
+    expect(view.getByRole('option', { name: 'Label (A) – Heading (B)' })).toBeInTheDocument()
+  })
+
+  // Regression guard: option labels must never be rendered as HTML.
+  describe('escapes option labels rendered with an active filter', () => {
+    const maliciousLabel = '<img src=x onerror="globalThis.xssExecuted = true">'
+
+    it('escapes labels that carry no highlight match', async () => {
+      const view = renderSelect({
+        options: [{ value: 0, label: maliciousLabel }],
+        filter: 'query',
+      })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      // The payload must be rendered as inert text, never parsed into a live element.
+      expect(view.getByRole('menu').querySelector('img')).toBeNull()
+      expect(view.getByText(maliciousLabel)).toBeInTheDocument()
+    })
+
+    it('escapes the non-matched fragments of a highlighted label', async () => {
+      const label = `${maliciousLabel} zammad`
+      const view = renderSelect({
+        options: [{ value: 0, label, match: /zammad/.exec(label)! }],
+        filter: 'zammad',
+      })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      const menu = view.getByRole('menu')
+      // The matched text is wrapped in the highlight span (the only intended markup) ...
+      expect(menu.querySelector('span[class*="bg-blue"]')).not.toBeNull()
+      // ... while injected markup in the surrounding fragments stays inert.
+      expect(menu.querySelector('img')).toBeNull()
+    })
+  })
+
+  it('highlights at the correct offset when the label contains combining marks', async () => {
+    const label = 'Cafe\u0301\u0300 zammad'
+    const view = renderSelect({
+      options: [{ value: 0, label }],
+      filter: 'zammad',
+    })
+
+    await view.events.click(view.getByText('Open Select'))
+
+    const highlight = view.getByRole('menu').querySelector('span[class*="bg-blue"]')
+    expect(highlight).not.toBeNull()
+    expect(highlight).toHaveTextContent('zammad')
+  })
+
+  it.each([
+    ['with an active filter', 'query'],
+    ['without a filter', undefined],
+  ])('labels an option without a label as unknown %s', async (_, filter) => {
+    const view = renderSelect({
+      options: [{ value: 5 }],
+      filter,
+    })
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(view.getByRole('menu')).toHaveTextContent('5 (unknown)')
+  })
+
+  it('can use boolean as value', async () => {
+    const modelValue = ref()
+    const view = renderSelect(
+      {
+        options: [
+          { value: true, label: 'Yes' },
+          { value: false, label: 'No' },
+        ],
+      },
+      modelValue,
+    )
+    await view.events.click(view.getByText('Open Select'))
+    await view.events.click(view.getByText('Yes'))
+    expect(modelValue.value).toBe(true)
+  })
+
+  it('has an accessible name', async () => {
+    const view = renderSelect({ options })
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(view.getByRole('listbox')).toHaveAccessibleName('Select…')
+  })
+
+  it('supports optional headings', async () => {
+    const view = renderSelect({
+      options: [
+        {
+          value: 0,
+          label: 'foo (%s)',
+          labelPlaceholder: ['1'],
+          heading: 'bar (%s)',
+          headingPlaceholder: ['2'],
+        },
+      ],
+    })
+
+    await view.events.click(view.getByText('Open Select'))
+
+    const option = view.getByRole('option')
+
+    expect(option).toHaveTextContent('foo (1) – bar (2)')
+    expect(option.children[1]).toHaveAttribute('aria-label', 'foo (1) – bar (2)')
+  })
+
+  it('supports navigating options with children', async () => {
+    const testChildOption = {
+      value: 1,
+      label: 'child',
+    }
+
+    const testParentOption = {
+      value: 1,
+      label: 'parent',
+      disabled: true,
+      children: [testChildOption],
+    }
+
+    const view = renderSelect({
+      options: [testParentOption],
+    })
+
+    await view.events.click(view.getByText('Open Select'))
+
+    expect(view.queryByRole('button', { name: 'Back to previous page' })).not.toBeInTheDocument()
+
+    expect(view.getByTestId('select-item')).toHaveTextContent('parent')
+    expect(view.getByTestId('select-item')).toHaveAttribute(
+      'aria-description',
+      'This item expands to show more options',
+    )
+
+    await view.events.click(view.getByTestId('select-item'))
+
+    expect(view.emitted().push).toEqual([[testParentOption]])
+
+    await view.rerender({
+      options: [testChildOption],
+      isChildPage: true,
+    })
+
+    expect(view.getByTestId('select-item')).toHaveTextContent('child')
+
+    await view.events.click(view.getByRole('button', { name: 'Back to previous page' }))
+
+    expect(view.emitted().pop).toEqual([[]])
+
+    await view.rerender({
+      options: [testParentOption],
+      isChildPage: false,
+    })
+
+    expect(view.queryByRole('button', { name: 'Back to previous page' })).not.toBeInTheDocument()
+
+    expect(view.getByTestId('select-item')).toHaveTextContent('parent')
+    expect(view.getByTestId('select-item')).toHaveAttribute(
+      'aria-description',
+      'This item expands to show more options',
+    )
+
+    await view.events.click(view.getByTestId('select-item'))
+
+    await view.rerender({
+      options: [testChildOption],
+      isChildPage: true,
+    })
+
+    await view.events.click(view.getByText('child'))
+
+    expect(view.emitted().select).toEqual([[testChildOption]])
+  })
+
+  describe('custom option component', () => {
+    it('replaces the default option', async () => {
+      const modelValue = ref(1)
+      const view = renderSelect({ options, optionComponent }, modelValue)
+
+      await view.events.click(view.getByText('Open Select'))
+
+      expect(view.getAllByTestId('custom-select-item')).toHaveLength(3)
+      expect(view.queryByTestId('select-item')).not.toBeInTheDocument()
+
+      const renderedOptions = view.getAllByRole('option')
+
+      expect(renderedOptions[0]).toHaveTextContent('Item A')
+      expect(renderedOptions[1]).toHaveAttribute('aria-selected', 'true')
+      expect(renderedOptions[0]).toHaveAttribute('aria-selected', 'false')
+    })
+
+    it('selects a value', async () => {
+      const modelValue = ref()
+      const view = renderSelect({ options, optionComponent }, modelValue)
+
+      await view.events.click(view.getByText('Open Select'))
+      await view.events.click(view.getByText('Item C'))
+
+      expect(view.emitted().select).toEqual([[options[2]]])
+      expect(modelValue.value).toBe(2)
+    })
+
+    it('keeps rendering the default option for the empty state', async () => {
+      const view = renderSelect({ options: [], optionComponent })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      expect(view.getByTestId('select-item')).toHaveTextContent('No results found')
+      expect(view.queryByTestId('custom-select-item')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('grid layout', () => {
+    const gridOptions = Array.from({ length: 7 }, (_, index) => ({
+      value: index,
+      label: `Item ${index}`,
+    }))
+
+    const focusFirstOption = (view: ExtendedRenderResult) => {
+      view.getAllByRole('option')[0].focus()
+    }
+
+    it('lays out the options as a wrapping grid', async () => {
+      const view = renderSelect({ options: gridOptions, gridLayout: true })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      const renderedOptions = view.getAllByRole('option')
+
+      expect(renderedOptions[0].parentElement).toHaveClass('flex', 'flex-wrap')
+
+      // Corner cells cannot round themselves, therefore the dropdown has to clip them.
+      expect(view.getByRole('listbox').parentElement).toHaveClass('overflow-hidden')
+
+      // The options must stay identifiable for assistive technology.
+      expect(renderedOptions).toHaveLength(7)
+      renderedOptions.forEach((option) => {
+        expect(option).toHaveAttribute('aria-selected', 'false')
+      })
+    })
+
+    it('lays out the options as a list by default', async () => {
+      const view = renderSelect({ options: gridOptions })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      expect(view.getAllByRole('option')[0].parentElement).not.toHaveClass('flex-wrap')
+    })
+
+    it('moves the focus along the rows with horizontal keys', async () => {
+      const view = renderSelect({
+        options: gridOptions,
+        gridLayout: true,
+        actions: [{ key: 'action', label: 'Custom action', onClick: vi.fn() }],
+      })
+
+      await view.events.click(view.getByText('Open Select'))
+
+      focusFirstOption(view)
+
+      await view.events.keyboard('{ArrowRight}')
+      expect(view.getAllByRole('option')[1]).toHaveFocus()
+
+      // Wrapping around must skip the dropdown actions, they are not options.
+      await view.events.keyboard('{ArrowLeft}')
+      await view.events.keyboard('{ArrowLeft}')
+      expect(view.getAllByRole('option')[6]).toHaveFocus()
+    })
+
+    it('supports a custom option component', async () => {
+      const modelValue = ref()
+      const view = renderSelect(
+        { options: gridOptions, gridLayout: true, optionComponent },
+        modelValue,
+      )
+
+      await view.events.click(view.getByText('Open Select'))
+
+      focusFirstOption(view)
+
+      expect(view.getAllByTestId('custom-select-item')[0].parentElement).toHaveClass(
+        'flex',
+        'flex-wrap',
+      )
+
+      await view.events.keyboard('{ArrowRight}')
+      expect(view.getAllByRole('option')[1]).toHaveFocus()
+
+      await view.events.keyboard('{Enter}')
+
+      expect(modelValue.value).toBe(1)
+    })
+  })
+})

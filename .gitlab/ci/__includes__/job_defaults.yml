@@ -1,0 +1,33 @@
+default:
+  image: $CI_REGISTRY/docker/zammad-ci:3.4.12
+
+  tags:
+    - docker
+
+  # Most jobs execute ruby commands, so take that as default.
+  cache: !reference [.cache, read_only_ruby]
+
+  # Artifacts are stored for failed jobs
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - tmp/screenshot*
+      - tmp/screenshots/*
+      - log/*.log
+
+  interruptible: true
+
+  # Initialize application env
+  before_script:
+    - !reference [.scripts, source_rvm]
+    - !reference [.scripts, bundle_install]
+    - !reference [.scripts, configure_environment]
+
+  after_script:
+    - .gitlab/environment_info.sh > log/environment_info.log
+    # Copy logs from other containers to store them as artifacts.
+    - cp /builds/*.log log/ || true
+    # Print recorded test runtimes for script/build/update_test_timings.rb. The script is
+    #   missing if an older commit is checked out, e.g. in rspec:migration.
+    - if [ -x .gitlab/print_test_timings.sh ]; then .gitlab/print_test_timings.sh; fi

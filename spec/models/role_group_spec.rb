@@ -1,0 +1,27 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+require 'models/concerns/has_group_relation_definition_examples'
+
+RSpec.describe RoleGroup do
+
+  let!(:group_relation_instance) { create(:role) }
+
+  it_behaves_like 'HasGroupRelationDefinition'
+
+  it 'prevents roles from beeing in Group assets' do
+
+    group = create(:group)
+
+    described_class.create!(
+      group: group,
+      role:  create(:role)
+    )
+
+    # groups are only part of the assets for a caller allowed to see them
+    assets = UserInfo.with_system_context { group.assets({}) }
+
+    expect(assets[:Group][group.id]).not_to include('role_ids')
+  end
+
+end

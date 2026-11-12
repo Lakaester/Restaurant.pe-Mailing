@@ -1,0 +1,221 @@
+// Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+import { getNode } from '@formkit/core'
+import { FormKit } from '@formkit/vue'
+import { nextTick } from 'vue'
+
+import { renderComponent } from '#tests/support/components/index.ts'
+import type { ExtendedRenderResult } from '#tests/support/components/index.ts'
+import { waitForTimeout } from '#tests/support/utils.ts'
+
+import { i18n } from '#shared/i18n.ts'
+
+const wrapperParameters = {
+  form: true,
+}
+
+describe('Form - Field - Textarea (Formkit-BuildIn)', () => {
+  let wrapper: ExtendedRenderResult
+
+  beforeAll(() => {
+    wrapper = renderComponent(FormKit, {
+      ...wrapperParameters,
+      props: {
+        name: 'textarea',
+        type: 'textarea',
+        id: 'textarea',
+        label: 'Body',
+      },
+      unmount: false,
+    })
+  })
+
+  afterAll(() => {
+    wrapper.unmount()
+  })
+
+  it('can render a textarea', () => {
+    const textarea = wrapper.getByLabelText('Body')
+
+    expect(textarea).toHaveAttribute('id', 'textarea')
+    expect(textarea).not.toHaveAttribute('placeholder')
+
+    const node = getNode('textarea')
+    expect(node?.value).toBe('')
+  })
+
+  it('set some props', async () => {
+    await wrapper.rerender({
+      help: 'This is the help text',
+      placeholder: 'Enter your body',
+      cols: 10,
+      maxlength: 100,
+      minlength: 10,
+      rows: 5,
+    })
+
+    expect(wrapper.getByText('This is the help text')).toBeInTheDocument()
+
+    const textarea = wrapper.getByLabelText('Body')
+
+    expect(textarea).toHaveAttribute('placeholder', 'Enter your body')
+    expect(textarea).toHaveAttribute('cols', '10')
+    expect(textarea).toHaveAttribute('rows', '5')
+    expect(textarea).toHaveAttribute('maxlength', '100')
+    expect(textarea).toHaveAttribute('minlength', '10')
+  })
+
+  it('check for the input event', async () => {
+    const textarea = wrapper.getByLabelText('Body')
+
+    await wrapper.events.type(textarea, 'example body')
+
+    await waitForTimeout()
+
+    const emittedInput = wrapper.emitted().inputRaw as Array<Array<InputEvent>>
+
+    expect(emittedInput[11][0]).toBe('example body')
+  })
+
+  it('renders the disabled state as readonly, so content stays reachable', async () => {
+    const textarea = wrapper.getByLabelText('Body')
+
+    expect(textarea).not.toHaveAttribute('readonly')
+    expect(textarea).not.toHaveAttribute('tabindex')
+    expect(textarea).not.toHaveAttribute('aria-disabled')
+
+    await wrapper.rerender({
+      disabled: true,
+    })
+
+    // Readonly instead of disabled, so overflowing content stays scrollable,
+    //   selectable and resizable (#6494).
+    expect(textarea).not.toHaveAttribute('disabled')
+    expect(textarea).toHaveAttribute('readonly')
+    expect(textarea).toHaveAttribute('tabindex', '-1')
+    expect(textarea).toHaveAttribute('aria-disabled', 'true')
+
+    // Reset the disabled state again and check if it's enabled again.
+    await wrapper.rerender({
+      disabled: false,
+    })
+
+    expect(textarea).not.toHaveAttribute('readonly')
+    expect(textarea).not.toHaveAttribute('tabindex')
+    expect(textarea).not.toHaveAttribute('aria-disabled')
+  })
+})
+
+describe('Form - Field - Textarea (Formkit-BuildIn) - Translations', () => {
+  it('can translate placeholder attribute', async () => {
+    const wrapper = renderComponent(FormKit, {
+      ...wrapperParameters,
+      props: {
+        label: 'Body',
+        help: 'This is the help text',
+        placeholder: 'Enter your body',
+        name: 'textarea',
+        type: 'textarea',
+        id: 'textarea',
+      },
+    })
+
+    const textarea = wrapper.getByLabelText('Body')
+
+    expect(textarea).toHaveAttribute('placeholder', 'Enter your body')
+
+    const map = new Map([['Enter your body', 'Gib deinen Text ein']])
+
+    i18n.setTranslationMap(map)
+
+    await nextTick()
+
+    expect(textarea).toHaveAttribute('placeholder', 'Gib deinen Text ein')
+  })
+
+  it('can translate label with label placeholder (simulate language switch)', async () => {
+    i18n.setTranslationMap(new Map([['Body %s %s', 'Text %s %s']]))
+
+    await nextTick()
+
+    const wrapper = renderComponent(FormKit, {
+      ...wrapperParameters,
+      props: {
+        label: 'Body %s %s',
+        labelPlaceholder: ['Example', 'Placeholder'],
+        name: 'textarea',
+        type: 'textarea',
+        id: 'textarea',
+      },
+    })
+
+    expect(wrapper.getByLabelText('Text Example Placeholder')).toBeInTheDocument()
+
+    i18n.setTranslationMap(new Map([['Body %s %s', 'Other Language %s %s']]))
+
+    await nextTick()
+
+    expect(wrapper.getByLabelText('Other Language Example Placeholder')).toBeInTheDocument()
+  })
+
+  it('can change translated label', async () => {
+    const map = new Map([
+      ['Body %s %s', 'Text %s %s'],
+      ['Other Body %s %s', 'Anderer Text %s %s'],
+    ])
+
+    i18n.setTranslationMap(map)
+
+    await nextTick()
+
+    const wrapper = renderComponent(FormKit, {
+      ...wrapperParameters,
+      props: {
+        label: 'Body %s %s',
+        labelPlaceholder: ['Example', 'Placeholder'],
+        name: 'textarea',
+        type: 'textarea',
+        id: 'textarea',
+      },
+    })
+
+    expect(wrapper.getByLabelText('Text Example Placeholder')).toBeInTheDocument()
+
+    await wrapper.rerender({
+      label: 'Other Body %s %s',
+    })
+
+    expect(wrapper.getByLabelText('Anderer Text Example Placeholder')).toBeInTheDocument()
+  })
+})
+
+describe('Form - Field - Messages - Translations', () => {
+  it('translates a message set from outside, e.g. a server side user error', async () => {
+    i18n.setTranslationMap(
+      new Map([
+        [
+          'These permissions are invalid because they would lock you out.',
+          'Ungültige Berechtigungen.',
+        ],
+      ]),
+    )
+
+    const wrapper = renderComponent(FormKit, {
+      ...wrapperParameters,
+      props: {
+        name: 'textarea',
+        type: 'textarea',
+        id: 'messages-textarea',
+        label: 'Body',
+      },
+    })
+
+    getNode('messages-textarea')!.setErrors([
+      'These permissions are invalid because they would lock you out.',
+    ])
+
+    // The backend sends the source string — it only marks it for extraction — so the field has to
+    //   translate it, like the form level messages do.
+    expect(await wrapper.findByText('Ungültige Berechtigungen.')).toBeInTheDocument()
+  })
+})

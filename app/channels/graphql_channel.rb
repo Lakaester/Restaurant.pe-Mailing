@@ -1,0 +1,68 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+class GraphqlChannel < ApplicationCable::Channel
+  def subscribed
+    @subscription_ids = []
+  end
+
+  def execute(data)
+    query = data['query']
+    variables = ensure_hash(data['variables'])
+    operation_name = data['operationName']
+
+    # Served as logged out while maintenance mode denies the user, as GraphqlController does.
+    user = effective_user
+
+    # context must be kept in sync with GraphqlController!
+    # Channels use session auth only (no token auth), so we set the token to nil here.
+    context = {
+      sid:             connection.sid,
+      current_user:    user && UserContext.new(user, nil),
+      current_user_id: user&.id,
+      # :channel is required for ActionCableSubscriptions and MUST NOT be used otherwise.
+      channel:         self,
+    }
+
+    result = UserInfo.with_user_id(user&.id) do
+      Gql::ZammadSchema.execute(query:, context:, variables:, operation_name:)
+    end
+
+    payload = {
+      result: result.to_h,
+      more:   result.subscription?,
+    }
+
+    # Track the subscription here so we can remove it
+    # on unsubscribe.
+    if result.context[:subscription_id]
+      @subscription_ids << result.context[:subscription_id]
+    end
+
+    transmit(payload)
+  end
+
+  def unsubscribed
+    @subscription_ids.each do |sid|
+      Gql::ZammadSchema.subscriptions.delete_subscription(sid)
+    end
+  end
+
+  private
+
+  def ensure_hash(ambiguous_param)
+    case ambiguous_param
+    when String
+      if ambiguous_param.present?
+        ensure_hash(JSON.parse(ambiguous_param))
+      else
+        {}
+      end
+    when Hash, ActionController::Parameters
+      ambiguous_param
+    when nil
+      {}
+    else
+      raise ArgumentError, "Unexpected parameter: #{ambiguous_param}"
+    end
+  end
+end

@@ -1,0 +1,101 @@
+# Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
+
+require 'rails_helper'
+require 'policies/knowledge_base_policy_examples'
+
+describe KnowledgeBase::CategoryPolicy do
+  subject(:policy) { described_class.new(user, record) }
+
+  let(:record) { create(:knowledge_base_category) }
+  let(:user)   { create(:user) }
+
+  describe '#show?' do
+    include_examples 'with KB policy check', editor: true, reader: true, none: false, method: :show?
+  end
+
+  # https://github.com/zammad/zammad/issues/6338
+  describe 'with an inactive knowledge base' do
+    before { record.knowledge_base.update! active: false }
+
+    describe '#show?' do
+      include_examples 'with KB policy check', editor: false, reader: false, none: false, method: :show?
+    end
+
+    describe '#show_public?' do
+      include_examples 'with KB policy check', editor: false, reader: false, none: false, method: :show_public?
+    end
+
+    describe '#show_any?' do
+      include_examples 'with KB policy check', editor: false, reader: false, none: false, method: :show_any?
+    end
+  end
+
+  describe '#show_public?' do
+    context 'when category has public content' do
+      before { allow(record).to receive(:public_content?).and_return(true) }
+
+      include_examples 'with KB policy check', editor: true, reader: true, none: true, method: :show_public?
+    end
+
+    context 'when category has no public content' do
+      before { allow(record).to receive(:public_content?).and_return(false) }
+
+      include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :show_public?
+    end
+  end
+
+  describe '#show_any?' do
+    context 'when category has public content' do
+      before { allow(record).to receive(:public_content?).and_return(true) }
+
+      include_examples 'with KB policy check', editor: true, reader: true, none: true, method: :show_any?
+    end
+
+    context 'when category has no public content' do
+      before { allow(record).to receive(:public_content?).and_return(false) }
+
+      include_examples 'with KB policy check', editor: true, reader: true, none: false, method: :show_any?
+    end
+  end
+
+  describe '#permissions?' do
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :permissions?
+  end
+
+  describe '#update?' do
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :update?
+  end
+
+  describe '#create_subcategory?' do
+    # Editor access to *this* category, not to its parent: the question is whether a category may be
+    #   added below this one, which is why it is not the same as #create?.
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :create_subcategory?
+  end
+
+  describe '#create_answer?' do
+    # The same access KnowledgeBase::AnswerPolicy#create? resolves through the answer's category,
+    #   asked of the category alone — the browse view has no answer to ask about yet.
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :create_answer?
+  end
+
+  describe '#destroy_answer?' do
+    # The same access KnowledgeBase::AnswerPolicy#destroy? resolves through the answer's category,
+    #   asked of the category alone — so the browse listing can gate its per-row delete action
+    #   without asking per row.
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :destroy_answer?
+  end
+
+  describe '#update_answer?' do
+    # The same access KnowledgeBase::AnswerPolicy#update? resolves through the answer's category,
+    #   asked of the category alone — so a list of answers asks it once instead of once per row.
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :update_answer?
+  end
+
+  describe '#create?' do
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :create?, access_method: :parent_access
+  end
+
+  describe '#destroy?' do
+    include_examples 'with KB policy check', editor: true, reader: false, none: false, method: :destroy?, access_method: :parent_access
+  end
+end
