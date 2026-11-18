@@ -1,0 +1,338 @@
+/* =========================================================================
+   C.O.S.E / Restaurant.pe — Zammad theme
+   =========================================================================
+   Target: Zammad 7.2.x (new Vue 3 desktop + mobile stack)
+   Drop-in locations:
+     - Desktop: app/frontend/apps/desktop/styles/custom/99-cose-theme.css
+     - Mobile:  app/frontend/apps/mobile/styles/custom/99-cose-theme.css
+     - Legacy:  app/assets/stylesheets/custom/99-cose-theme.css
+   Then rebuild assets and restart Zammad. See README.md.
+   ========================================================================= */
+
+@font-face {
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/assets/fonts/montserrat-latin.woff2') format('woff2');
+}
+
+:root:not([data-theme="dark"]) body,
+:root:not([data-theme="dark"]) button,
+:root:not([data-theme="dark"]) input,
+:root:not([data-theme="dark"]) select,
+:root:not([data-theme="dark"]) textarea {
+  font-family: Montserrat, 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* -------------------------------------------------------------------------
+   1. COSE source tokens (reference only; do not use as a second palette)
+   ------------------------------------------------------------------------- */
+:root {
+  --cose-primary: #b45309;        /* action, active, focus */
+  --cose-primary-hover: #92400e;  /* hover / pressed */
+  --cose-brand: #ee781f;          /* Restaurant.pe brand accent */
+  --cose-primary-25: #f5b27a;
+  --cose-primary-10: #fde8d7;
+  --cose-primary-5: #fff6ee;
+  --cose-charcoal: #4c5b5f;       /* main text / dark surfaces */
+  --cose-charcoal-dark: #3f4a4e;
+  --cose-text: #4c5b5f;
+  --cose-text-muted: #6e7678;
+  --cose-border: #e1e5e6;
+  --cose-surface: #ffffff;
+  --cose-bg: #f5f6f5;
+  --cose-success: #1f7a5a;
+  --cose-warning: #b54708;
+  --cose-danger: #b42318;
+}
+
+/* -------------------------------------------------------------------------
+   2. Legacy Zammad variables (old CoffeeScript frontend)
+      Official variable names from app/assets/stylesheets/zammad.scss
+      Scoped to light/default theme so Zammad dark mode is not broken.
+   ------------------------------------------------------------------------- */
+:root:not([data-theme="dark"]) {
+  --button-primary-text: #ffffff;
+  --button-primary-background: var(--cose-primary);
+  --button-primary-background-active: var(--cose-primary-hover);
+
+  --button-background: var(--cose-surface);
+  --button-background-active: var(--cose-bg);
+  --button-active: var(--cose-charcoal);
+  --button-active-active: var(--cose-charcoal-dark);
+
+  --header-primary: var(--cose-text);
+  --header-secondary: var(--cose-text-muted);
+  --text-normal: var(--cose-text);
+  --text-muted: var(--cose-text-muted);
+  --text-muted-highlight: var(--cose-primary-10);
+  --text-muted-alt: var(--cose-text-muted);
+  --text-link: var(--cose-primary);
+  --text-inverted: #ffffff;
+  --text-active: #ffffff;
+  --text-nav: var(--cose-text);
+  --text-button-primary: var(--cose-primary);
+  --text-button-primary-active: var(--cose-primary-hover);
+  --text-button-secondary: var(--cose-text-muted);
+  --nav-icon: var(--cose-text-muted);
+
+  --highlight: var(--cose-primary);
+  --interactive-primary: var(--cose-primary);
+  --interactive-muted: var(--cose-text-muted);
+  --interactive-muted-active: var(--cose-text);
+  --interactive-muted-alt: var(--cose-text-muted);
+
+  --background-primary: var(--cose-bg);
+  --background-primary-alt: #edf0f0;
+  --background-secondary: var(--cose-surface);
+  --background-secondary-hover: var(--cose-bg);
+  --background-tertiary: var(--cose-charcoal);
+  --background-quaternary: var(--cose-charcoal-dark);
+  --background-quaternary-alt: #e1e5e6;
+  --background-popover: var(--cose-surface);
+  --background-active: var(--cose-primary);
+  --background-highlight: var(--cose-primary-10);
+  --background-article-meta: #fafbfb;
+  --background-article-customer: var(--cose-primary-10);
+  --background-article-customer-meta: var(--cose-primary-5);
+
+  --background-modifier-accent: rgba(76, 91, 95, 0.06);
+  --background-modifier-accent-light: rgba(76, 91, 95, 0.03);
+  --background-modifier-accent-dark: rgba(76, 91, 95, 0.25);
+  --background-modifier-lighter: rgba(255, 255, 255, 0.08);
+  --background-modifier-border: rgba(76, 91, 95, 0.12);
+  --background-modifier-hover: rgba(76, 91, 95, 0.08);
+
+  --border: var(--cose-border);
+  --border-alt: #d5dbdc;
+  --border-highlight: var(--cose-brand);
+  --border-internal: var(--cose-primary-10);
+  --border-internal-stripe: var(--cose-primary-5);
+  --border-article-customer: var(--cose-primary-25);
+  --border-article-customer-selected: var(--cose-brand);
+  --shadow-highlight: rgba(238, 120, 31, 0.28);
+
+  --supergood-color: var(--cose-success);
+  --good-color: var(--cose-success);
+  --ok-color: #ca8a04;
+  --bad-color: var(--cose-warning);
+  --superbad-color: var(--cose-danger);
+  --danger-color: var(--cose-danger);
+  --pending-color: var(--cose-text-muted);
+
+  --tag-text: var(--cose-text);
+  --tag-background: var(--cose-primary-10);
+  --table-border: var(--cose-border);
+  --table-header-background: var(--cose-bg);
+
+  /* Navigation: charcoal + orange active (safe default for COSE identity).
+     See the optional white-navigation block at the end. */
+  --menu-text: #c9d0d1;
+  --menu-text-active: #ffffff;
+  --menu-text-open: #ffffff;
+  --menu-text-closed: #ffffff;
+  --menu-text-escalating: #ffffff;
+  --menu-background-active: var(--cose-primary);
+  --menu-icon: #c9d0d1;
+  --menu-icon-secondary: #c9d0d1;
+  --menu-background-primary: var(--cose-charcoal-dark);
+  --menu-background-primary-hover: rgba(255, 255, 255, 0.06);
+  --menu-background-secondary: var(--cose-charcoal);
+  --menu-close-tab-background: var(--cose-charcoal-dark);
+  --menu-border: none;
+  --menu-border-secondary: none;
+}
+
+/* -------------------------------------------------------------------------
+   3. New Vue 3 / Tailwind stack tokens (Zammad 7.x)
+      Source: app/frontend/apps/desktop/styles/tokens.css
+      These override the generated @theme variables.
+      Scoped to light/default theme; dark mode keeps Zammad defaults.
+   ------------------------------------------------------------------------- */
+:root:not([data-theme="dark"]) {
+  /* Primary accent: Zammad blue -> Restaurant.pe orange */
+  --color-blue-50: #fff9f4;
+  --color-blue-75: #fff6ee;
+  --color-blue-100: #fff6ee;
+  --color-blue-200: #fde8d7;
+  --color-blue-300: #f5b27a;
+  --color-blue-350: #fde8d7;
+  --color-blue-400: #f5b27a;
+  --color-blue-500: #ee781f;
+  --color-blue-550: #ee781f;
+  --color-blue-600: #ee781f;
+  --color-blue-700: #d97706;
+  --color-blue-800: #b45309;
+  --color-blue-850: #92400e;
+  --color-blue-875: #7c2d12;
+  --color-blue-900: #6c2710;
+  --color-blue-950: #431407;
+
+  /* Neutrals: cool gray -> Restaurant.pe charcoal */
+  --color-neutral-50: #f5f6f5;
+  --color-neutral-75: #f5f6f5;
+  --color-neutral-100: #e1e5e6;
+  --color-neutral-200: #d5dbdc;
+  --color-neutral-300: #c9d0d1;
+  --color-neutral-400: #b8c0c2;
+  --color-neutral-500: #6e7678;
+  --color-neutral-700: #9aa0a1;
+  --color-neutral-800: #4c5b5f;
+  --color-neutral-950: #1e2a2d;
+
+  --color-stone-200: #9aa0a1;
+  --color-stone-400: #6e7678;
+  --color-stone-500: #4c5b5f;
+  --color-stone-700: #3f4a4e;
+
+  /* Semantic states (same hue families, contrast-safe for badges) */
+  --color-green-400: #1f7a5a;
+  --color-green-500: #1f7a5a;
+  --color-green-700: #145a42;
+  --color-green-900: #0c3b2c;
+
+  --color-yellow-500: #ca8a04;
+  --color-yellow-600: #b54708;
+  --color-yellow-700: #92400e;
+  --color-yellow-800: #6c2710;
+
+  --color-red-300: #b42318;
+  --color-red-400: #b42318;
+  --color-red-500: #b42318;
+  --color-red-600: #912018;
+  --color-red-900: #55160c;
+}
+
+/* -------------------------------------------------------------------------
+   4. Typography
+      Montserrat must be self-hosted. Zammad's CSP may block external fonts.
+      Upload 400/500/600 WOFF2 to public/assets/fonts/ and uncomment.
+   ------------------------------------------------------------------------- */
+/*
+@font-face {
+  font-family: "Montserrat";
+  src: url("/assets/fonts/montserrat-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/assets/fonts/montserrat-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/assets/fonts/montserrat-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Montserrat", "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+}
+
+strong,
+b {
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------
+   5. Components: colors, radii, focus. No layout/dimension overrides.
+   ------------------------------------------------------------------------- */
+.btn,
+.form-control,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+.dropdown-menu {
+  border-radius: 4px;
+}
+
+.btn,
+.form-control,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+  border-color: var(--cose-brand);
+  box-shadow: none;
+  outline: none;
+}
+
+/* Accessible keyboard focus without adding shadows. */
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--cose-brand);
+  outline-offset: 2px;
+}
+
+/* New-stack component hook documented by Zammad. */
+[data-zammad-target="CommonButton"] {
+  border-radius: 4px;
+}
+
+[data-zammad-target="CommonButton"]:focus-visible {
+  outline: 2px solid var(--cose-brand);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------
+   6. Optional: exact COSE white navigation.
+      Zammad's navigation structure differs between versions. Enable only
+      after inspecting the rendered DOM and verifying these variables.
+   ------------------------------------------------------------------------- */
+/*
+:root {
+  --menu-background-primary: #ffffff;
+  --menu-background-primary-hover: #f5f6f5;
+  --menu-background-secondary: #f5f6f5;
+  --menu-close-tab-background: #f5f6f5;
+  --menu-text: #4c5b5f;
+  --menu-text-active: #ffffff;
+  --menu-icon: #6e7678;
+  --menu-icon-secondary: #4c5b5f;
+  --menu-switch-background: #e1e5e6;
+  --menu-switch-pointer: #ffffff;
+  --menu-border: 1px solid #e1e5e6;
+}
+*/
+
+/* Identidad global C.O.S.E. en el frontend móvil. */
+:root:not([data-theme="dark"]) a {
+  color: var(--cose-primary);
+}
+
+:root:not([data-theme="dark"]) h1,
+:root:not([data-theme="dark"]) h2,
+:root:not([data-theme="dark"]) h3 {
+  color: var(--cose-charcoal);
+}
+
+:root:not([data-theme="dark"]) ::selection {
+  background: var(--cose-primary-25);
+  color: #fff;
+}
