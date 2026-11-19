@@ -21,13 +21,17 @@ Zammad; inocuo).
 
 ## Configuración del repositorio
 
-- Actions habilitado (necesario para `cose-ci.yml`).
+- Actions habilitado (necesario para `cose-ci.yml`), con **acciones permitidas
+  restringidas**: solo las de GitHub (`actions/*`) y `pnpm/action-setup@*`. Las
+  acciones `docker/*` y `pkgr/*` de los workflows de publicación quedan
+  bloqueadas aunque alguien los reactive.
 - Permisos por defecto de `GITHUB_TOKEN`: **solo lectura**; los workflows no
   pueden aprobar PRs.
 - El primer push solo incluye las ramas `main` y `cose/personalizaciones`, que
   no coinciden con los filtros `stable*`, `develop-*` ni tags: ningún workflow
   heredado se dispara con la publicación. Los cuatro heredados se deshabilitan
-  inmediatamente después del push (antes del primer cron).
+  inmediatamente después del push (antes del primer cron). Durante el push,
+  Actions estuvo apagado a nivel de repositorio: 0 ejecuciones.
 
 ```bash
 R=Lakaester/Restaurant.pe-Mailing

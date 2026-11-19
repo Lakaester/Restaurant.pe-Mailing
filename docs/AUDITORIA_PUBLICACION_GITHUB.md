@@ -88,7 +88,27 @@ que tiene permisos de solo lectura y no usa secretos.
 
 - Organización `RestaurantPE`: existe en GitHub, pero la cuenta `Lakaester` no es
   miembro ni tiene invitaciones. **No se usa.**
-- Destino preparado: `Lakaester/Restaurant.pe-Mailing`, **privado**. Pendiente de aprobación.
+- Destino: `Lakaester/Restaurant.pe-Mailing`, **privado**. Publicado el 19/11/2026 (ver sección 8).
 - Se publican únicamente las referencias `refs/heads/main` y
   `refs/heads/cose/personalizaciones`, con refspecs explícitos. Nunca se usa `--all`,
   `--mirror` ni `--tags`.
+
+## 8. Resultado de la publicación (19/11/2026)
+
+| Verificación | Resultado |
+|---|---|
+| Datos sensibles en los 9 commits publicables, en los mensajes y en los autores | 0 |
+| Patrones de secretos en el contenido propio | 0 |
+| Respaldo `refs/respaldo/*` alcanzable desde las ramas publicadas | No |
+| Referencias remotas | Solo `refs/heads/main` y `refs/heads/cose/personalizaciones`; 0 tags |
+| Commit y árbol remotos frente a los locales | Idénticos en ambas ramas (`80e0f313` / `6ae6005f`, `329d3d92` / `e4925f8a`) |
+| Archivos en `cose/personalizaciones` | 14.195 en el remoto y 14.195 en local |
+| Visibilidad | `private`. Rama por defecto `main`. Wiki deshabilitada |
+| Ejecuciones de Actions | 0. Actions estuvo apagado durante el push y los 4 heredados quedaron en `disabled_manually` |
+| Archivos locales excluidos (evidencias, `.orig`, `database.yml`) | Intactos: 12/12 SHA-256 coinciden |
+
+Incidencia: GitHub devolvía HTTP 408 al procesar el paquete completo (~34 MB,
+17.000 objetos). Se subió en 4 tandas mediante commits temporales cuyos árboles
+eran subconjuntos exactos de `main` (`i18n`, `app`, `test`+`public`, `spec`),
+usando una rama temporal `tmp/subida`. Esa rama se borró después; no aportaba
+contenido distinto del de `main`.

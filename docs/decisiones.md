@@ -80,13 +80,14 @@ implica.
   redactado (IP de producción y cliente externo); workflows heredados
   deshabilitados según `GITHUB_ACTIONS.md`; evidencias con datos reales fuera
   del repositorio.
-- **Estado:** preparado; pendiente de aprobación para crear el repositorio.
+- **Estado:** **publicado el 19/11/2026** con aprobación del responsable. Ramas
+  `main` y `cose/personalizaciones`; visibilidad privada verificada.
 
 ## Pendientes de decisión
 
 | Tema | Estado |
 |---|---|
-| Repositorio remoto privado (GitHub) | Preparado; pendiente de confirmación (D-009) |
+| Repositorio remoto privado (GitHub) | Publicado (D-009) |
 | Entorno local de ejecución | WSL2 Ubuntu (D-007) |
 | Elasticsearch en local y en producción | Pendiente |
 | Validación legal de la licencia AGPL-3.0 | Pendiente |
