@@ -79,8 +79,10 @@ npx oxlint app/frontend/apps/desktop/pages/cose-atenciones app/frontend/apps/des
   clientes y se mantienen solo en local.
 - Los datos de infraestructura de producción se escriben en los documentos como
   marcadores (`<IP_BD_PRODUCCION>`); el valor real se entrega por canal seguro.
-- Los workflows de GitHub Actions heredados de Zammad están pensados para el
-  repositorio oficial; en este repositorio Actions está deshabilitado.
+- Los workflows de GitHub Actions heredados de Zammad (CI completa, Docker y
+  publicación de paquetes) están deshabilitados en este repositorio; solo corre
+  `cose-ci.yml`, una CI ligera del código C.O.S.E. Ver
+  [`docs/GITHUB_ACTIONS.md`](../docs/GITHUB_ACTIONS.md).
 
 Auditoría de publicación: [`docs/AUDITORIA_PUBLICACION_GITHUB.md`](../docs/AUDITORIA_PUBLICACION_GITHUB.md).
 

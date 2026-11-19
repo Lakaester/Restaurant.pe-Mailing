@@ -1,0 +1,61 @@
+# CI ligera de C.O.S.E. (propia de Restaurant.pe-Mailing; no es parte de Zammad).
+#
+# Solo valida el código C.O.S.E.: pruebas Vitest y oxlint. No usa secretos, no
+# publica nada y solo se ejecuta cuando cambian rutas C.O.S.E. La CI completa
+# heredada de Zammad (ci.yaml) está deshabilitada en GitHub por su coste; ver
+# docs/GITHUB_ACTIONS.md.
+
+name: cose-ci
+
+on:
+  pull_request:
+    paths:
+      - 'app/frontend/apps/desktop/pages/cose-*/**'
+      - 'app/frontend/apps/desktop/components/layout/cose/**'
+      - 'app/frontend/apps/desktop/components/layout/LayoutPage.vue'
+      - 'app/frontend/apps/desktop/components/layout/LayoutSidebar/LeftSidebar/LeftSidebarHeader.vue'
+      - '.github/workflows/cose-ci.yml'
+  push:
+    branches:
+      - 'cose/**'
+    paths:
+      - 'app/frontend/apps/desktop/pages/cose-*/**'
+      - 'app/frontend/apps/desktop/components/layout/cose/**'
+      - 'app/frontend/apps/desktop/components/layout/LayoutPage.vue'
+      - 'app/frontend/apps/desktop/components/layout/LayoutSidebar/LeftSidebar/LeftSidebarHeader.vue'
+      - '.github/workflows/cose-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cose-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+      - name: Use Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint C.O.S.E.
+        run: >
+          pnpm lint:js:oxlint:cmd
+          app/frontend/apps/desktop/pages/cose-atenciones
+          app/frontend/apps/desktop/pages/cose-sla
+          app/frontend/apps/desktop/components/layout/cose
+      - name: Test C.O.S.E.
+        run: pnpm test --run app/frontend/apps/desktop/pages/cose-atenciones

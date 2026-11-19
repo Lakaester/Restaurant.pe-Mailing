@@ -73,10 +73,14 @@ implica.
 ## D-009 — Repositorio remoto privado en GitHub
 
 - **Fecha:** 19/11/2026
-- **Propuesta:** publicar como repositorio privado `Restaurant.pe-Mailing`.
-- **Condiciones:** auditoría de `AUDITORIA_PUBLICACION_GITHUB.md`, Actions
-  deshabilitado, evidencias con datos reales fuera del repositorio.
-- **Estado:** pendiente de confirmación del destino por el responsable.
+- **Propuesta:** publicar como repositorio privado `Lakaester/Restaurant.pe-Mailing`.
+  La organización `RestaurantPE` existe en GitHub, pero la cuenta `Lakaester`
+  no es miembro; no se publica en ella sin autorización.
+- **Condiciones:** auditoría de `AUDITORIA_PUBLICACION_GITHUB.md`; historial
+  redactado (IP de producción y cliente externo); workflows heredados
+  deshabilitados según `GITHUB_ACTIONS.md`; evidencias con datos reales fuera
+  del repositorio.
+- **Estado:** preparado; pendiente de aprobación para crear el repositorio.
 
 ## Pendientes de decisión
 

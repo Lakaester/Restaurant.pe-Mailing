@@ -9,6 +9,7 @@ Documentación propia de Mailing. No forma parte del código de Zammad.
 | [`decisiones.md`](decisiones.md) | Decisiones tomadas y su justificación |
 | [`UPSTREAM.md`](UPSTREAM.md) | Relación con Zammad oficial, parches sobre el núcleo y procedimiento de actualización |
 | [`AUDITORIA_PUBLICACION_GITHUB.md`](AUDITORIA_PUBLICACION_GITHUB.md) | Auditoría de seguridad previa a la publicación en GitHub |
+| [`GITHUB_ACTIONS.md`](GITHUB_ACTIONS.md) | Auditoría de workflows heredados y CI propia |
 | [`verificacion-fase-1.md`](verificacion-fase-1.md) | Verificación byte a byte del código base |
 | [`atenciones-zammad/`](atenciones-zammad/) | Diseño, decisiones, matrices y SQL del módulo de Atenciones y del motor SLA de C.O.S.E. |
 
