@@ -34,7 +34,7 @@ export async function zammadRest<T>(
   const url = `/api/v1${path}${queryString ? `?${queryString}` : ''}`
 
   const hasBody = options.body !== undefined
-  const response = await fetch(url, {
+  const init: RequestInit = {
     method,
     credentials: 'same-origin',
     headers: {
@@ -42,8 +42,10 @@ export async function zammadRest<T>(
       ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
       'X-CSRF-Token': csrfToken(),
     },
-    body: hasBody ? JSON.stringify(options.body) : undefined,
-  })
+  }
+  // GET nunca lleva cuerpo; solo POST/PUT lo envían cuando existe.
+  if (hasBody && method !== 'GET') init.body = JSON.stringify(options.body)
+  const response = await fetch(url, init)
 
   if (!response.ok) {
     let mensaje = `Error ${response.status}`

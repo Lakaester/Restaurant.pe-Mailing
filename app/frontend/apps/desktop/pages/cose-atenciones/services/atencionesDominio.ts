@@ -62,10 +62,11 @@ export function filtrarAtenciones(
 }
 
 export function contarPorGrupo(filas: AtencionFila[]): Record<GrupoEstado, number> {
-  return filas.reduce<Record<GrupoEstado, number>>(
-    (acumulado, fila) => ({ ...acumulado, [fila.grupo]: acumulado[fila.grupo] + 1 }),
-    { abiertos: 0, pendientes: 0, cerrados: 0 },
-  )
+  const conteo: Record<GrupoEstado, number> = { abiertos: 0, pendientes: 0, cerrados: 0 }
+  filas.forEach((fila) => {
+    conteo[fila.grupo] += 1
+  })
+  return conteo
 }
 
 /** Dominio a partir de un correo. Devuelve cadena vacía si no hay arroba. */
