@@ -12,8 +12,8 @@
  *     `dominio` (input). `cose_categoria` guarda la categoría padre.
  */
 
-import { zammadRest } from './zammadRest'
-import { grupoDeEstado, type AtencionFila } from './atencionesDominio'
+import { grupoDeEstado, type AtencionFila } from './atencionesDominio.ts'
+import { zammadRest } from './zammadRest.ts'
 
 export const CAMPO_CLASIFICACION = 'categoria_subcategoria'
 export const CAMPO_CATEGORIA_PADRE = 'cose_categoria'

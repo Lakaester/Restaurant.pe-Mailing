@@ -57,6 +57,12 @@ jobs:
           app/frontend/apps/desktop/pages/cose-atenciones
           app/frontend/apps/desktop/pages/cose-sla
           app/frontend/apps/desktop/components/layout/cose
+      - name: ESLint C.O.S.E.
+        run: >
+          pnpm lint:js:eslint:cmd
+          app/frontend/apps/desktop/pages/cose-atenciones
+          app/frontend/apps/desktop/pages/cose-sla
+          app/frontend/apps/desktop/components/layout/cose
       - name: Test C.O.S.E.
         run: >
           pnpm test --run

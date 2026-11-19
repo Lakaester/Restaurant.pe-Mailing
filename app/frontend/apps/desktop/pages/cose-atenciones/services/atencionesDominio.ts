@@ -6,7 +6,7 @@
  * Sin dependencias de Vue ni de red, para poder probarlas de forma aislada.
  */
 
-import { CATALOGO_COSE, type CatalogoCategoria } from '../catalog/catalogo-cose'
+import { CATALOGO_COSE, type CatalogoCategoria } from '../catalog/catalogo-cose.ts'
 
 export type GrupoEstado = 'abiertos' | 'pendientes' | 'cerrados'
 export type FiltroEstado = 'todos' | GrupoEstado

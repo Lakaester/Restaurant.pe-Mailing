@@ -1,18 +1,12 @@
 // Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
 
+/* eslint-disable zammad/zammad-detect-translatable-string --
+   C.O.S.E. es una interfaz solo en español y sus textos/valores de catálogo no
+   forman parte del catálogo de traducción de Zammad (fuente en inglés). Ver
+   docs/decisiones.md (D-010). */
+
 import { computed, reactive, ref } from 'vue'
 
-import {
-  buscarSubcategoria,
-  contarPorGrupo,
-  dominioDeCliente,
-  filtrarAtenciones,
-  hayPaginaSiguiente,
-  normalizarDominio,
-  type AtencionFila,
-  type FiltrosAtencion,
-} from '../services/atencionesDominio'
-import { decidirEnvio, modoEnvio, type ModoEnvio } from '../services/politicaEnvio'
 import {
   actualizarTicket,
   articulosTicket,
@@ -33,8 +27,19 @@ import {
   type ZammadEstado,
   type ZammadTicket,
   type ZammadUsuarioActual,
-} from '../services/atencionesApi'
-import { ZammadRestError } from '../services/zammadRest'
+} from '../services/atencionesApi.ts'
+import {
+  buscarSubcategoria,
+  contarPorGrupo,
+  dominioDeCliente,
+  filtrarAtenciones,
+  hayPaginaSiguiente,
+  normalizarDominio,
+  type AtencionFila,
+  type FiltrosAtencion,
+} from '../services/atencionesDominio.ts'
+import { decidirEnvio, modoEnvio, type ModoEnvio } from '../services/politicaEnvio.ts'
+import { ZammadRestError } from '../services/zammadRest.ts'
 
 export function useAtenciones(valorEnvio: string | undefined = undefined) {
   const yo = ref<ZammadUsuarioActual | null>(null)

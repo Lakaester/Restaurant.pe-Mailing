@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { CATALOGO_COSE } from '../../catalog/catalogo-cose'
+import { CATALOGO_COSE } from '../../catalog/catalogo-cose.ts'
 import {
   buscarSubcategoria,
   contarPorGrupo,
@@ -16,7 +16,7 @@ import {
   valoresRepetidos,
   type AtencionFila,
   type FiltrosAtencion,
-} from '../atencionesDominio'
+} from '../atencionesDominio.ts'
 
 const base: FiltrosAtencion = { texto: '', soloMias: false, estado: 'todos', canal: 'todos' }
 

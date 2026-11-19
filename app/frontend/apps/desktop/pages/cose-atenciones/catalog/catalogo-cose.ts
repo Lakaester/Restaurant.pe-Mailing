@@ -1,5 +1,10 @@
 // Copyright (C) 2012-2026 Zammad Foundation, https://zammad-foundation.org/
 
+/* eslint-disable zammad/zammad-detect-translatable-string --
+   C.O.S.E. es una interfaz solo en español y sus textos/valores de catálogo no
+   forman parte del catálogo de traducción de Zammad (fuente en inglés). Ver
+   docs/decisiones.md (D-010). */
+
 /**
  * Catálogo oficial de C.O.S.E. (13 categorías, 65 subcategorías).
  * GENERADO desde backend/src/domain/sla/catalogo/catalogo-oficial.json

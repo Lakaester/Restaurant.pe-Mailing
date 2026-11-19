@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { decidirEnvio, modoEnvio, VARIABLE_ENVIO } from '../politicaEnvio'
+import { decidirEnvio, modoEnvio, VARIABLE_ENVIO } from '../politicaEnvio.ts'
 
 describe('barrera de salida de correo', () => {
   it('solo se habilita con el valor exacto', () => {

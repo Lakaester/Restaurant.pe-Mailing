@@ -86,6 +86,20 @@ implica.
 - **Estado:** **publicado el 19/11/2026** con aprobación del responsable. Ramas
   `main` y `cose/personalizaciones`; visibilidad privada verificada.
 
+## D-010 — Idioma de la interfaz C.O.S.E. y catálogo de traducción
+
+- **Fecha:** 19/11/2026
+- **Decisión:** los textos de la interfaz C.O.S.E. y los valores del catálogo
+  de categorías se escriben directamente en español y **no** se marcan con
+  `__()` para el catálogo de traducción de Zammad.
+- **Motivo:** el catálogo de Zammad usa el inglés como idioma de origen y se
+  gestiona en translations.zammad.org; mezclar cadenas en español lo
+  contaminaría. Además, las categorías son valores de datos guardados en los
+  tickets, no textos traducibles.
+- **Implica:** la regla ESLint `zammad/zammad-detect-translatable-string` se
+  desactiva por archivo (con justificación) en el código C.O.S.E. Si en el
+  futuro se necesita multilenguaje, se definirá un catálogo propio.
+
 ## Pendientes de decisión
 
 | Tema | Estado |
