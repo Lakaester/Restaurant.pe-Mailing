@@ -19,6 +19,7 @@ de escritorio (Vue 3).
 | Núcleo Zammad 7.2.3 | Verificado byte a byte contra el tag oficial `7.2.3` |
 | Tema visual C.O.S.E. | Implementado (escritorio, móvil y vista clásica) |
 | Vista de Atenciones | Implementada; pruebas unitarias 23/23 |
+| Integración con el núcleo | Sin parches: extensión en tiempo de compilación (addon weave) |
 | Vista de SLA | Esqueleto de interfaz; motor SLA en diseño |
 | Motor SLA (backend) | Diseño y SQL de esquema documentados; sin desplegar |
 
@@ -35,7 +36,7 @@ Todo lo que no aparece aquí es código original de Zammad 7.2.3.
 
 ```text
 app/frontend/apps/desktop/
-  components/layout/cose/            Cabecera C.O.S.E.
+  components/layout/cose/            Cabecera C.O.S.E. y extensión del layout (weave)
   pages/cose-atenciones/             Vista de Atenciones (servicios, catálogo, pruebas)
   pages/cose-sla/                    Vista de SLA
   styles/custom/99-cose-theme.css    Tema escritorio
@@ -47,8 +48,10 @@ docs/                                Documentación del proyecto (empezar por do
 addons/README.md                     Reglas para futuros addons
 ```
 
-Archivos del núcleo de Zammad modificados (parches que se revisan en cada
-actualización): ver [`docs/UPSTREAM.md`](../docs/UPSTREAM.md).
+El núcleo de Zammad no está modificado: la cabecera y el logo C.O.S.E. se
+integran en el layout en tiempo de compilación con la capa de extensión oficial
+de Zammad (`components/layout/cose/cose-layout.weave.mjs`). Ver
+[`docs/UPSTREAM.md`](../docs/UPSTREAM.md).
 
 ## Desarrollo local (Ubuntu / WSL2)
 
@@ -67,7 +70,7 @@ La vista de Atenciones queda en `http://localhost:3000/desktop/cose/atenciones`.
 Pruebas y lint del código C.O.S.E.:
 
 ```bash
-pnpm test --run app/frontend/apps/desktop/pages/cose-atenciones
+pnpm test --run app/frontend/apps/desktop/pages/cose-atenciones app/frontend/apps/desktop/components/layout/cose
 npx oxlint app/frontend/apps/desktop/pages/cose-atenciones app/frontend/apps/desktop/pages/cose-sla app/frontend/apps/desktop/components/layout/cose
 ```
 

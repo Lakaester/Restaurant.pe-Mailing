@@ -69,6 +69,9 @@ implica.
   (`LayoutPage.vue`, `LeftSidebarHeader.vue`) para la cabecera y el logo C.O.S.E.
 - **Implica:** quedan inventariados en `UPSTREAM.md`; el objetivo es moverlos a
   un addon con la capa de extensión de Vue de Zammad.
+- **Actualización 19/11/2026:** resuelto. Los parches se sustituyeron por el
+  manifiesto `cose-layout.weave.mjs`; el núcleo vuelve a ser idéntico a 7.2.3
+  y D-004 se cumple sin excepciones.
 
 ## D-009 — Repositorio remoto privado en GitHub
 

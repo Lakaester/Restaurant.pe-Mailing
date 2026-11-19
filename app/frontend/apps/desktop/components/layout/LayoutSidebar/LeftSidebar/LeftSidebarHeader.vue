@@ -34,10 +34,6 @@ whenever(
 const { hasPermission } = useSessionStore()
 
 const isTicketAgent = computed(() => hasPermission('ticket.agent') ?? false)
-
-// Servido por Rails desde public/; se usa una constante para que Vite no intente
-// resolverlo como módulo.
-const logoIcono = '/cose/logo-icono.png'
 </script>
 
 <template>
@@ -55,13 +51,8 @@ const logoIcono = '/cose/logo-icono.png'
       class="flex items-center justify-center"
       :class="{ 'ltr:ml-auto rtl:mr-auto': !collapsed }"
     >
-      <!-- Branding C.O.S.E.: logo oficial de Restaurant.pe -->
-      <img
-        :src="logoIcono"
-        alt="C.O.S.E."
-        class="cose-logo-sidebar"
-        data-test-id="cose-sidebar-logo"
-      />
+      <!--  :TODO Add custom branding  -->
+      <CommonIcon name="logo" class="z-10 block h-9 w-9" />
     </component>
   </header>
 </template>

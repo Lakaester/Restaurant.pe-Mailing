@@ -58,4 +58,7 @@ jobs:
           app/frontend/apps/desktop/pages/cose-sla
           app/frontend/apps/desktop/components/layout/cose
       - name: Test C.O.S.E.
-        run: pnpm test --run app/frontend/apps/desktop/pages/cose-atenciones
+        run: >
+          pnpm test --run
+          app/frontend/apps/desktop/pages/cose-atenciones
+          app/frontend/apps/desktop/components/layout/cose

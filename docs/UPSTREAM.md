@@ -51,15 +51,41 @@ git diff --name-status refs/upstream-tags/7.2.3 cose/personalizaciones -- app pu
 - `public/assets/fonts/montserrat-latin.woff2`, `montserrat-latin-ext.woff2`
   (Montserrat, SIL Open Font License 1.1)
 
-### Parches sobre archivos del núcleo
+### Extensiones del núcleo mediante addon weave (sin parches)
 
-La decisión D-004 prohíbe modificar el núcleo salvo parche documentado. Hoy hay
-**dos** parches; ambos deben revisarse en cada actualización de Zammad.
+Desde el 19/11/2026 **no hay archivos del núcleo modificados**: `git diff
+refs/upstream-tags/7.2.3 -- app public` solo muestra archivos añadidos.
 
-| Archivo | Cambio | Riesgo en actualización |
-|---|---|---|
-| `app/frontend/apps/desktop/components/layout/LayoutPage.vue` | Inserta `<CoseHeader />` y reorganiza el layout (89+/90−) | **Alto**: archivo central del layout, cambia con frecuencia |
-| `app/frontend/apps/desktop/components/layout/LayoutSidebar/LeftSidebar/LeftSidebarHeader.vue` | Sustituye el icono de Zammad por el logo C.O.S.E. | Bajo |
+Los dos antiguos parches del layout se aplican en tiempo de compilación con la
+capa oficial de extensión de Zammad (`app/frontend/build/addonWeave`), desde el
+manifiesto
+`app/frontend/apps/desktop/components/layout/cose/cose-layout.weave.mjs`:
+
+| Núcleo (intacto en disco) | Extensión aplicada al compilar |
+|---|---|
+| `components/layout/LayoutPage.vue` | Envuelve la rejilla en un contenedor en columna con `<CoseHeader />`; ajusta las clases de la rejilla y de `#main-content`; fija la navegación principal desplegada desde 768 px |
+| `components/layout/LayoutSidebar/LeftSidebar/LeftSidebarHeader.vue` | Sustituye el icono `logo` de Zammad por `/cose/logo-icono.png` |
+
+Validación: la plantilla resultante es equivalente nodo a nodo a la de los
+antiguos parches (única diferencia: `data-test-id="cose-layout"` añadido) y el
+servidor Vite de desarrollo sirve los módulos ya extendidos. Pruebas en
+`components/layout/cose/__tests__/cose-layout.weave.spec.ts`.
+
+Diferencias de comportamiento frente a los antiguos parches:
+
+- Se conserva el comportamiento de Zammad que pliega la navegación principal
+  cuando se abre la barra lateral de un ticket en pantallas pequeñas (el parche
+  lo eliminaba; la extensión no puede quitar código del núcleo y es un
+  comportamiento razonable).
+
+Pruebas del núcleo afectadas a propósito:
+
+- `LeftSidebarHeader.spec.ts › shows dummy logo when user has no agent
+  permission` espera el icono de Zammad y falla con la marca C.O.S.E. (también
+  fallaba con el parche anterior). Es el cambio de marca buscado.
+
+En una actualización de Zammad, si cambian los anclajes (`root`, `#main-content`,
+`CommonIcon name="logo"`) la compilación falla indicando este manifiesto.
 
 ### Cambios de comportamiento a tener en cuenta
 
@@ -67,13 +93,6 @@ La decisión D-004 prohíbe modificar el núcleo salvo parche documentado. Hoy h
   escritorio pasa a ser Atenciones en lugar del Dashboard de Zammad.
 - La vista de Atenciones usa la API REST `/api/v1` con la sesión del agente y el
   token CSRF de la página; no usa tokens de servicio.
-
-## Objetivo: migrar los parches a un addon
-
-Zammad 7.x permite extender la interfaz Vue en tiempo de compilación mediante
-addons (`.dev/agent_docs/frontend_addon_layer.md`). El objetivo técnico es mover
-las vistas y, sobre todo, los dos parches del layout a `addons/cose/` para que
-el núcleo vuelva a ser idéntico al tag oficial.
 
 ## Procedimiento de actualización a una nueva versión
 
@@ -83,8 +102,8 @@ el núcleo vuelva a ser idéntico al tag oficial.
    (`.gitignore` sección MAILING, `docs/`, `addons/README.md`, `.github/README.md`).
 4. Verificar con `git diff --stat refs/upstream-tags/<X.Y.Z>` que solo difieren
    los archivos propios. Fusionar en `main`.
-5. Rebasar o fusionar `cose/personalizaciones` y resolver los dos parches de la
-   tabla anterior.
+5. Fusionar en `cose/personalizaciones`; ejecutar el build/pruebas para
+   comprobar que los anclajes de `cose-layout.weave.mjs` siguen existiendo.
 6. Ejecutar migraciones, pruebas de C.O.S.E. y prueba manual de Atenciones.
 7. Revisar `BREAKING_CHANGES.md` y los avisos de seguridad de Zammad.
 
