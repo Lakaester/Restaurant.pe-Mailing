@@ -53,12 +53,37 @@ implica.
 - **Implica:** todavía no hay repositorio remoto ni se ha subido código a
   ninguna plataforma.
 
+## D-007 — Repositorio de trabajo en Ubuntu (WSL2)
+
+- **Fecha:** 19/11/2026
+- **Decisión:** el desarrollo continúa en `/home/acast/mailing` (Ubuntu/WSL2),
+  rama `cose/personalizaciones`. `C:\dev\mailing` queda como copia de origen y
+  no se modifica.
+- **Motivo:** Windows rompe permisos de ejecución y enlaces simbólicos de Zammad
+  (ver commits `80e0f313` y `f8bbeada`).
+
+## D-008 — Parches sobre el núcleo (excepción a D-004)
+
+- **Fecha:** 19/11/2026
+- **Decisión:** se aceptan temporalmente dos parches en el layout de escritorio
+  (`LayoutPage.vue`, `LeftSidebarHeader.vue`) para la cabecera y el logo C.O.S.E.
+- **Implica:** quedan inventariados en `UPSTREAM.md`; el objetivo es moverlos a
+  un addon con la capa de extensión de Vue de Zammad.
+
+## D-009 — Repositorio remoto privado en GitHub
+
+- **Fecha:** 19/11/2026
+- **Propuesta:** publicar como repositorio privado `Restaurant.pe-Mailing`.
+- **Condiciones:** auditoría de `AUDITORIA_PUBLICACION_GITHUB.md`, Actions
+  deshabilitado, evidencias con datos reales fuera del repositorio.
+- **Estado:** pendiente de confirmación del destino por el responsable.
+
 ## Pendientes de decisión
 
 | Tema | Estado |
 |---|---|
-| Repositorio remoto privado (GitHub u otro) | Sin autorizar |
-| Entorno local de ejecución (WSL2, contenedor o servidor) | En evaluación |
+| Repositorio remoto privado (GitHub) | Preparado; pendiente de confirmación (D-009) |
+| Entorno local de ejecución | WSL2 Ubuntu (D-007) |
 | Elasticsearch en local y en producción | Pendiente |
 | Validación legal de la licencia AGPL-3.0 | Pendiente |
 | Dominio definitivo de Mailing | Pendiente |
